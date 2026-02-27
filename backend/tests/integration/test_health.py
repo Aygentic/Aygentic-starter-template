@@ -41,7 +41,7 @@ def _make_app(supabase_mock: MagicMock | None = None) -> FastAPI:
 def _healthy_supabase() -> MagicMock:
     """Return a mock Supabase client that reports healthy."""
     mock = MagicMock()
-    mock.table.return_value.select.return_value.limit.return_value.execute.return_value = MagicMock()
+    mock.table.return_value.select.return_value.execute.return_value = MagicMock()
     return mock
 
 
@@ -58,7 +58,7 @@ def _api_error_supabase() -> MagicMock:
     This simulates the table not existing, but the server being reachable.
     """
     mock = MagicMock()
-    mock.table.return_value.select.return_value.limit.return_value.execute.side_effect = APIError(
+    mock.table.return_value.select.return_value.execute.side_effect = APIError(
         {"message": "relation '_health_check' does not exist", "code": "PGRST204"}
     )
     return mock
@@ -168,8 +168,8 @@ class TestReadyz:
         assert response.status_code == 503
         assert response.headers["content-type"] == "application/json"
         body = response.json()
-        assert "status" in body
-        assert "checks" in body
+        assert body["status"] == "not_ready"
+        assert body["checks"]["supabase"] == "error"
 
     def test_no_auth_required(self) -> None:
         """GET /readyz succeeds without Authorization header."""
@@ -213,17 +213,29 @@ class TestVersion:
 
     def test_includes_service_name(self) -> None:
         """GET /version includes service_name for gateway discoverability."""
-        client = TestClient(_make_app())
+        mock_settings = MagicMock()
+        mock_settings.SERVICE_NAME = "my-service"
+        mock_settings.SERVICE_VERSION = "0.1.0"
+        mock_settings.GIT_COMMIT = "unknown"
+        mock_settings.BUILD_TIME = "unknown"
+        mock_settings.ENVIRONMENT = "local"
 
-        data = client.get("/version").json()
+        with patch("app.api.routes.health.settings", mock_settings):
+            data = TestClient(_make_app()).get("/version").json()
 
-        assert data["service_name"] == "my-service"  # default from Settings
+        assert data["service_name"] == "my-service"
 
     def test_default_values_for_unset_env_vars(self) -> None:
         """GIT_COMMIT and BUILD_TIME default to 'unknown' when not set."""
-        client = TestClient(_make_app())
+        mock_settings = MagicMock()
+        mock_settings.SERVICE_NAME = "my-service"
+        mock_settings.SERVICE_VERSION = "0.1.0"
+        mock_settings.GIT_COMMIT = "unknown"
+        mock_settings.BUILD_TIME = "unknown"
+        mock_settings.ENVIRONMENT = "local"
 
-        data = client.get("/version").json()
+        with patch("app.api.routes.health.settings", mock_settings):
+            data = TestClient(_make_app()).get("/version").json()
 
         assert data["commit"] == "unknown"
         assert data["build_time"] == "unknown"
