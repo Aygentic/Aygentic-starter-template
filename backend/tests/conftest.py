@@ -17,7 +17,7 @@ try:
     from tests.utils.utils import get_superuser_token_headers
 
     _INTEGRATION_DEPS_AVAILABLE = True
-except (ImportError, AttributeError):
+except (ImportError, AttributeError, Exception):
     _INTEGRATION_DEPS_AVAILABLE = False
 
 

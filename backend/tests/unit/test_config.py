@@ -30,7 +30,8 @@ def test_parses_required_vars(monkeypatch):
 def test_missing_required_var_raises(monkeypatch):
     """Missing any required var raises ValidationError."""
     monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
-    # Missing SUPABASE_SERVICE_KEY and CLERK_SECRET_KEY
+    monkeypatch.delenv("SUPABASE_SERVICE_KEY", raising=False)
+    monkeypatch.delenv("CLERK_SECRET_KEY", raising=False)
     from app.core.config import Settings
 
     with pytest.raises(ValidationError):
