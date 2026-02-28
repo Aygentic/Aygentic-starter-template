@@ -344,6 +344,8 @@ Every service exposes standard endpoints that gateways use for health checking a
 | `GET /healthz` | Liveness probe — is the process running? | No |
 | `GET /readyz` | Readiness probe — can the service handle traffic? | No |
 
+> **Security note:** The `/version` endpoint exposes `environment` and `commit` fields publicly. In hardened production environments, consider restricting `/version` behind gateway-level IP allowlisting or omitting sensitive fields to limit reconnaissance surface.
+
 ### Routing Conventions
 
 All API routes use the `/api/v1` prefix (configured via `API_V1_STR` in `backend/app/core/config.py`). The service name belongs in the deployment URL, not the API path:
@@ -440,6 +442,8 @@ async def get_user(http: HttpClientDep, user_id: str):
 ```
 
 This returns a structured `503 SERVICE_UNAVAILABLE` response with the `SERVICE_NOT_CONFIGURED` error code, making it clear that the issue is a missing configuration — not a downstream service failure.
+
+> **Security note:** `{SERVICE_NAME}_URL` values must always point to internal or trusted endpoints. Never derive a service URL from user-supplied input — doing so creates a server-side request forgery (SSRF) vector. Path components interpolated into service URLs (e.g., `user_id`) should be validated before use.
 
 ---
 

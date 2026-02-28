@@ -34,7 +34,12 @@ services:
       # HTTPS — TLS-terminated traffic
       - "443:443"
     volumes:
-      # Docker socket (read-only) — Traefik reads labels from running containers
+      # Docker socket (read-only) — Traefik reads labels from running containers.
+      # SECURITY: Even with :ro, any process with socket access can enumerate all
+      # container metadata including environment variables (secrets). For hardened
+      # production deployments, use a Docker socket proxy such as
+      # ghcr.io/tecnativa/docker-socket-proxy to restrict access to the containers
+      # read API only.
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Persistent volume for Let's Encrypt certificates
       - traefik-certificates:/certificates
@@ -80,14 +85,20 @@ services:
       - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
       - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
 
-      # --- Rate limiting middleware (reference — not active by default) ---
-      # To enable rate limiting on a service, add these labels to that service
-      # and reference the middleware name in its router labels:
-      #   traefik.http.middlewares.rate-limit.ratelimit.average=100
-      #   traefik.http.middlewares.rate-limit.ratelimit.burst=50
-      #   traefik.http.middlewares.rate-limit.ratelimit.period=1m
-      # Then apply it to a router:
-      #   traefik.http.routers.<name>-https.middlewares=rate-limit
+      # --- Rate limiting middleware (NOT active by default — enable before production) ---
+      #
+      # To activate rate limiting:
+      #   1. Uncomment these three labels to define the middleware on this Traefik service:
+      #        traefik.http.middlewares.rate-limit.ratelimit.average=100
+      #        traefik.http.middlewares.rate-limit.ratelimit.burst=50
+      #        traefik.http.middlewares.rate-limit.ratelimit.period=1m
+      #   2. On each backend service router, attach the middleware:
+      #        traefik.http.routers.<STACK>-backend-https.middlewares=rate-limit
+      #      (see the example backend labels at the bottom of this file)
+      #   3. Tune average/burst/period to match your traffic profile.
+      #
+      # WARNING: Without rate limiting, unauthenticated endpoints (/healthz, /readyz,
+      # /version) are exposed to abuse. Enable this middleware before production use.
     networks:
       - traefik-public
 
