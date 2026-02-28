@@ -3,11 +3,12 @@ title: "Deployment Environments"
 doc-type: reference
 status: published
 last-updated: 2026-03-01
-updated-by: "infra docs writer (AYG-73)"
+updated-by: "infra docs writer (AYG-74)"
 related-code:
   - backend/app/core/config.py
   - compose.yml
   - compose.override.yml
+  - compose.gateway.yml
   - backend/Dockerfile
   - frontend/Dockerfile
   - .github/workflows/deploy-staging.yml
@@ -51,6 +52,24 @@ Configuration is managed via environment variables with the following characteri
 Domains are managed by:
 - **Local**: localhost with optional localhost.tiangolo.com
 - **Staging/Production**: Traefik with subdomains (api.*, dashboard.*, etc.)
+
+### Self-Hosted Gateway
+
+For teams running their own reverse proxy on a VPS or bare-metal server, `compose.gateway.yml` is a reference Traefik 3.6 configuration. It is **not used by the template CI/CD** and is never started by default — it exists as documentation for self-hosted gateway deployments.
+
+**Prerequisites:**
+- Create the shared external network: `docker network create traefik-public`
+- Set `ACME_EMAIL` in your `.env` (required for Let's Encrypt certificate registration)
+
+**Start the gateway (self-hosted only):**
+
+```bash
+docker compose -f compose.gateway.yml up -d
+```
+
+Then add the example service labels from `compose.gateway.yml` to your own `compose.yml` services and bring them up on the same `traefik-public` network.
+
+Teams deploying to managed platforms (Railway, Cloud Run, Fly.io) should use the platform's built-in routing instead.
 
 ---
 
@@ -357,6 +376,19 @@ Set via GitHub Secrets (encrypted, never logged):
 - `LOG_LEVEL` - Override default INFO level
 - `HTTP_CLIENT_TIMEOUT` - Override default 30 seconds
 - Other variables as needed for your deployment
+
+**Service-to-Service Communication (`{SERVICE_NAME}_URL`):**
+
+When this service calls other internal services, add one variable per upstream dependency following the pattern `{SERVICE_NAME}_URL`:
+
+| Variable | Example Value | Notes |
+|----------|---------------|-------|
+| `USER_SERVICE_URL` | `https://user-service.railway.internal` | Internal URL for the user service |
+| `BILLING_SERVICE_URL` | `https://billing-service.railway.internal` | Internal URL for the billing service |
+
+- Default: empty/unset — service integration is disabled until a URL is configured
+- Use internal hostnames (e.g., Railway private networking) where available to avoid public egress
+- Set via GitHub Secrets for staging/production; set in `.env` for local development
 
 **How to set:**
 

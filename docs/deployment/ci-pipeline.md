@@ -130,6 +130,8 @@ Path filter (`dorny/paths-filter@v3`) — the `test-playwright` job only runs if
 - `compose*.yml`
 - `.github/workflows/playwright.yml`
 
+**Note:** `compose.gateway.yml` matches the `compose*.yml` glob pattern but is a reference-only file that is never used by the template directly; changes to it do not affect application behaviour and will not produce meaningful test differences.
+
 ### Jobs
 
 | Job | Runner | Depends On | Notes |
