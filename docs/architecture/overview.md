@@ -2,8 +2,8 @@
 title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
-last-updated: 2026-02-28
-updated-by: "architecture-docs-writer (AYG-71)"
+last-updated: 2026-03-01
+updated-by: "architecture-docs-writer (AYG-74)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -34,6 +34,7 @@ related-code:
   - frontend/src/components/
   - compose.yml
   - compose.override.yml
+  - compose.gateway.yml
 related-docs:
   - docs/architecture/decisions/
   - docs/api/overview.md
@@ -226,6 +227,9 @@ The application runs as a set of Docker Compose services with two configuration 
 - `mailcatcher` -- Local SMTP trap (SMTP port 1025, web UI port 1080) for email testing
 - `playwright` -- Containerised E2E test runner with blob-report volume mount
 - `traefik-public` network set to `external: false` for local operation
+
+**Self-hosted Gateway Reference** (`compose.gateway.yml`):
+A reference-only Traefik 3.6 gateway configuration is provided for teams that self-host an API gateway. This file is not part of the running template and is not referenced by `compose.yml` or `compose.override.yml`. Teams on managed platforms (Railway, Cloud Run, Fly.io) can discard it; teams running their own infrastructure can use it as a starting point. See [ADR-0005](decisions/0005-gateway-ready-conventions-and-service-communication.md) for the rationale behind keeping the gateway separate from the template.
 
 ### Networking
 
@@ -420,6 +424,54 @@ Request
 - 4xx → `warning`
 - 5xx → `error`
 
+## Service-to-Service Communication
+
+When this service needs to call another internal service, it uses the shared `HttpClient` instance (see Key Components) rather than creating ad-hoc HTTP sessions. The following conventions apply to all inter-service calls.
+
+### Service Discovery: Environment Variables
+
+Each upstream dependency is declared with a single `{SERVICE_NAME}_URL` environment variable:
+
+```
+USER_SERVICE_URL=https://user-service.railway.internal
+NOTIFICATION_SERVICE_URL=https://notifications.railway.internal
+```
+
+The variable name follows the pattern `{SERVICE_NAME}_URL` where `SERVICE_NAME` is the UPPER_SNAKE_CASE service identifier. Managed platforms (Railway, Cloud Run, Fly.io) provide stable internal DNS names suitable for these values.
+
+### Using the Shared HTTP Client
+
+Route handlers and service functions receive the client via the `HttpClientDep` FastAPI dependency from `app.api.deps`:
+
+```python
+from app.api.deps import HttpClientDep
+
+async def call_upstream(http_client: HttpClientDep) -> dict:
+    response = await http_client.get(settings.USER_SERVICE_URL + "/api/v1/users/me")
+    return response.json()
+```
+
+The client automatically propagates `X-Request-ID` and `X-Correlation-ID` headers (bound to structlog contextvars by `RequestPipelineMiddleware`) to every outbound request, maintaining a traceable correlation chain across service boundaries.
+
+### Fail-Fast on Missing Configuration
+
+If a required upstream URL is not configured, the service raises a `ServiceError` immediately rather than attempting a call to an empty or invalid URL:
+
+```python
+if not settings.USER_SERVICE_URL:
+    raise ServiceError(
+        status_code=503,
+        message="User service is not configured",
+        code="SERVICE_NOT_CONFIGURED",
+    )
+```
+
+This prevents silent misconfigurations from producing misleading downstream errors at runtime.
+
+### Security: SSRF Prevention
+
+`{SERVICE_NAME}_URL` values must always point to trusted internal endpoints. These variables must **never** be set from user-supplied input, as doing so would create a Server-Side Request Forgery (SSRF) vulnerability. Acceptable sources are deployment environment variables, secrets managers, or IaC configuration.
+
 ## Application Lifespan
 
 The FastAPI app uses an async `lifespan` context manager (`backend/app/main.py`) to manage shared resources. This replaces the deprecated `on_startup` / `on_shutdown` event hooks.
@@ -536,6 +588,7 @@ Key decisions are documented as ADRs in `docs/architecture/decisions/`:
 | [0002](decisions/0002-shared-pydantic-models-package.md) | Shared Pydantic Models Package | accepted | 2026-02-28 |
 | [0003](decisions/0003-structlog-and-request-pipeline-middleware.md) | Structlog Adoption and Request Pipeline Middleware | accepted | 2026-02-27 |
 | [0004](decisions/0004-supabase-service-layer-pattern.md) | Supabase Service Layer Pattern | accepted | 2026-02-28 |
+| [0005](decisions/0005-gateway-ready-conventions-and-service-communication.md) | Gateway-Ready Conventions and Service-to-Service Communication | proposed | 2026-03-01 |
 
 ## Known Constraints
 
