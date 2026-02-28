@@ -1,4 +1,5 @@
 name: CI
+# Unified CI workflow replacing test-backend.yml + test-docker-compose.yml
 
 on:
   push:
