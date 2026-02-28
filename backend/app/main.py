@@ -56,17 +56,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     yield
 
-    # Shutdown
-    try:
-        await app.state.http_client.close()
-    except Exception:
-        logger.exception("http_client_close_failed")
+    # Shutdown — order: log event, close http client, flush Sentry (AC-10)
     logger.info(
         "app_shutdown",
         service_name=settings.SERVICE_NAME,
         version=settings.SERVICE_VERSION,
         environment=settings.ENVIRONMENT,
     )
+    try:
+        await app.state.http_client.close()
+    except Exception:
+        logger.exception("http_client_close_failed")
     sentry_sdk.flush(timeout=2.0)
 
 
