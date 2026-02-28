@@ -347,6 +347,7 @@ Set via GitHub Secrets (encrypted, never logged):
 | Secret | Platform |
 |--------|----------|
 | `RAILWAY_TOKEN` + `RAILWAY_SERVICE_ID_STAGING` / `RAILWAY_SERVICE_ID_PRODUCTION` | Railway |
+| `ALIBABA_ACCESS_KEY` + `ALIBABA_SECRET_KEY` | Alibaba Cloud (ACR + ECS) |
 | `GCP_SA_KEY` + `GCP_SERVICE_NAME` | Google Cloud Run |
 | `FLY_API_TOKEN` | Fly.io |
 | `DEPLOY_HOST` | Self-hosted via SSH |

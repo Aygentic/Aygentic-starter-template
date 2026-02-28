@@ -5,7 +5,7 @@ status: published
 last-updated: 2026-03-01
 updated-by: "infra docs writer (AYG-73)"
 related-code:
-  - .github/workflows/test-backend.yml
+  - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
   - .github/workflows/pre-commit.yml
   - .github/workflows/deploy-staging.yml
@@ -291,6 +291,7 @@ Concurrent staging deploys are cancelled — only the latest push to `main` depl
 | Secret | Platform |
 |--------|----------|
 | `RAILWAY_TOKEN` + `RAILWAY_SERVICE_ID_STAGING` | Railway |
+| `ALIBABA_ACCESS_KEY` + `ALIBABA_SECRET_KEY` | Alibaba Cloud (ACR + ECS) |
 | `GCP_SA_KEY` + `GCP_SERVICE_NAME` | Google Cloud Run |
 | `FLY_API_TOKEN` | Fly.io |
 | `DEPLOY_HOST` | Self-hosted via SSH |
@@ -359,6 +360,7 @@ Production deployments are never cancelled mid-flight — a second release queue
 | Secret | Platform |
 |--------|----------|
 | `RAILWAY_TOKEN` + `RAILWAY_SERVICE_ID_PRODUCTION` | Railway |
+| `ALIBABA_ACCESS_KEY` + `ALIBABA_SECRET_KEY` | Alibaba Cloud (ACR + ECS) |
 | `GCP_SA_KEY` + `GCP_SERVICE_NAME` | Google Cloud Run |
 | `FLY_API_TOKEN` | Fly.io |
 | `DEPLOY_HOST` | Self-hosted via SSH |
@@ -546,6 +548,8 @@ Configure these in: **GitHub repository → Settings → Secrets and variables �
 | `RAILWAY_TOKEN` | Both deploy workflows | Railway | Railway API token for deployment |
 | `RAILWAY_SERVICE_ID_STAGING` | `deploy-staging.yml` | Railway | Railway service ID for staging |
 | `RAILWAY_SERVICE_ID_PRODUCTION` | `deploy-production.yml` | Railway | Railway service ID for production |
+| `ALIBABA_ACCESS_KEY` | Both deploy workflows | Alibaba Cloud (ACR + ECS) | Alibaba Cloud access key ID |
+| `ALIBABA_SECRET_KEY` | Both deploy workflows | Alibaba Cloud (ACR + ECS) | Alibaba Cloud secret access key |
 | `GCP_SA_KEY` | Both deploy workflows | Google Cloud Run | Service account JSON key |
 | `GCP_SERVICE_NAME` | Both deploy workflows | Google Cloud Run | Cloud Run service name |
 | `FLY_API_TOKEN` | Both deploy workflows | Fly.io | Fly.io API token |
