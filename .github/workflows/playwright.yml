@@ -38,7 +38,9 @@ jobs:
   test-playwright:
     needs:
       - changes
-    if: ${{ needs.changes.outputs.changed == 'true' && vars.TEMPLATE_REPO_MODE != 'true' }}
+    # Opt-in: set repository variable PLAYWRIGHT_ENABLED=true to run E2E tests.
+    # Skipped by default in template/bootstrap repos where Supabase is not configured.
+    if: ${{ needs.changes.outputs.changed == 'true' && vars.PLAYWRIGHT_ENABLED == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
