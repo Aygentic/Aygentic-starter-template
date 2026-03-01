@@ -1,8 +1,8 @@
 ---
 title: "Testing Strategy"
 doc-type: reference
-status: draft
-last-updated: 2026-02-26
+status: active
+last-updated: 2026-03-01
 updated-by: "initialise skill"
 related-code:
   - "backend/tests/**/*"
@@ -23,14 +23,14 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 **Backend Framework:** Pytest <8.0.0
 **Frontend E2E Framework:** Playwright 1.58.2
-**Coverage Target:** Backend source coverage tracked via `coverage` package
+**Coverage Target:** 90% backend source coverage (enforced in CI via `coverage` package)
 
 ## Testing Pyramid
 
 | Level | Proportion | Framework | Purpose |
 |-------|-----------|-----------|---------|
-| Unit | 70% | Pytest | Individual functions, CRUD operations, utilities |
-| Integration | 20% | Pytest | API endpoints with database, service interactions |
+| Unit | 70% | Pytest | Service layer, models, core modules, utilities |
+| Integration | 20% | Pytest | Route handlers with TestClient, dependency overrides |
 | E2E | 10% | Playwright | Critical user workflows (login, CRUD, settings) |
 
 ## Commands
@@ -40,8 +40,9 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | Command | Purpose |
 |---------|---------|
 | `bash ./scripts/test.sh` | Run all backend tests (from project root) |
-| `docker compose exec backend bash scripts/tests-start.sh` | Run tests in Docker |
-| `docker compose exec backend bash scripts/tests-start.sh -x` | Stop on first error |
+| `bash ./scripts/test-local.sh` | Run backend tests locally |
+| `uv run pytest backend/tests/unit/ -v` | Run unit tests only |
+| `uv run pytest backend/tests/integration/ -v` | Run integration tests only |
 | `uv run pytest backend/tests/path/to/test.py` | Run single test file |
 | `uv run coverage report` | View coverage report |
 
@@ -60,10 +61,10 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 | Convention | Pattern | Example |
 |------------|---------|---------|
-| Location | Separate `tests/` directory | `backend/tests/api/routes/test_users.py` |
-| Naming | `test_*.py` | `test_users.py`, `test_items.py` |
-| Structure | Function-based with fixtures | `def test_create_user(client, db):` |
-| Subdirs | Mirror app structure | `tests/api/routes/`, `tests/crud/`, `tests/scripts/` |
+| Location | Separate `tests/` directory | `backend/tests/unit/test_entity_service.py` |
+| Naming | `test_*.py` | `test_auth.py`, `test_errors.py` |
+| Structure | Function-based with fixtures | `def test_create_entity(client, mock_supabase):` |
+| Subdirs | `unit/`, `integration/`, `crud/` (legacy), `api/routes/` (legacy) | `tests/unit/`, `tests/integration/` |
 
 ### Frontend
 
@@ -80,10 +81,12 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 | Type | Pattern | When to Use |
 |------|---------|-------------|
-| Database | pytest fixtures with test DB | All DB-dependent tests |
-| HTTP | httpx / pytest-mock | External API calls |
-| Config | Pydantic settings override via `patch` | Environment-specific tests |
-| External services | `unittest.mock.patch` | SMTP, Sentry |
+| Supabase | `MagicMock` with chainable table operations | All new resource tests (unit + integration) |
+| Auth | `app.dependency_overrides[get_current_principal]` | Tests requiring authenticated user |
+| Database (legacy) | pytest fixtures with test DB | Legacy DB-dependent tests (crud/, api/routes/) |
+| HTTP | httpx / `unittest.mock.patch` | External API calls, HttpClient tests |
+| Config | Environment variables set in fixtures before app imports | Settings validation, environment-specific tests |
+| External services | `unittest.mock.patch` | Sentry, Clerk SDK |
 
 ### Frontend
 
@@ -114,12 +117,25 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 ## Test Fixtures (Backend)
 
+### New Path (unit + integration tests)
+
+| Fixture | Scope | Purpose |
+|---------|-------|---------|
+| `mock_supabase` | function | MagicMock Supabase client with chainable table operations |
+| `test_principal` | function | `Principal(user_id="user_test123")` for auth |
+| `client` | function | FastAPI TestClient with mocked Supabase + auth overrides |
+| `unauthenticated_client` | function | TestClient with mocked Supabase only (no auth override) |
+
+### Legacy Path (crud + api/routes tests)
+
 | Fixture | Scope | Purpose |
 |---------|-------|---------|
 | `db` | session | Database session with init_db + cleanup |
 | `client` | module | FastAPI TestClient instance |
 | `superuser_token_headers` | module | Auth headers for superuser |
 | `normal_user_token_headers` | module | Auth headers for regular user |
+
+> Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern skips DB-dependent fixtures automatically via `_INTEGRATION_DEPS_AVAILABLE`.
 
 ## Related
 

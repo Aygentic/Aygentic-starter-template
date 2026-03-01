@@ -2,22 +2,24 @@
 
 ## Project Overview
 
-Full-stack web app template: FastAPI backend + React frontend + PostgreSQL. JWT auth, user management, CRUD, auto-generated API client. Docker Compose-based monorepo with Traefik reverse proxy.
+Full-stack web app template: FastAPI backend + React frontend + PostgreSQL. Clerk JWT auth, Supabase REST for new resources, legacy SQLModel ORM for users/items. Auto-generated API client. Docker Compose monorepo with Traefik reverse proxy.
 
 ## Technology Stack
 
 | Category | Technology |
 |----------|-----------|
 | Backend | Python >=3.10, FastAPI >=0.114.2 |
-| ORM | SQLModel >=0.0.21 (SQLAlchemy) |
-| Database | PostgreSQL 18, Alembic migrations |
+| Auth | Clerk JWT (external), legacy HS256 in transition |
+| Database | PostgreSQL 18, Supabase REST (new resources), SQLModel ORM (legacy) |
+| Migrations | Supabase CLI (`supabase/migrations/`) + Alembic (`backend/alembic/`) |
+| Observability | structlog >=24.1.0 (JSON/console), Sentry (non-local) |
+| Resilience | httpx + tenacity (retry, circuit breaker) |
 | Frontend | TypeScript 5.9, React 19.1, Vite 7.3 (SWC) |
 | Routing | TanStack Router 1.157+ (file-based) |
 | Server State | TanStack Query 5.90+ |
 | Styling | Tailwind CSS 4.2, shadcn/ui (new-york) |
-| Auth | JWT (HS256) via PyJWT, Argon2+Bcrypt |
 
-**Key Libraries:** Zod 4.x, React Hook Form 7.x, Axios 1.13, lucide-react, sonner
+**Key Libraries:** Zod 4.x, React Hook Form 7.x, Axios 1.13, lucide-react, sonner, clerk-backend-api, supabase-py
 
 ## Architecture Overview
 
@@ -25,23 +27,29 @@ Full-stack web app template: FastAPI backend + React frontend + PostgreSQL. JWT 
 
 ```
 backend/app/
-  api/routes/       # FastAPI endpoint handlers
-  core/             # config.py, db.py, security.py
-  alembic/versions/ # Database migrations
-  models.py         # SQLModel tables + Pydantic schemas
-  crud.py           # Data access functions
+  api/routes/        # FastAPI endpoint handlers (thin → delegate to services)
+  core/              # auth.py, config.py, db.py, errors.py, http_client.py,
+                     # logging.py, middleware.py, security.py, supabase.py
+  models/            # Pydantic package: common.py, auth.py, entity.py
+  services/          # Business logic: entity_service.py
+  models.py          # Legacy SQLModel tables (User, Item) — being migrated
+  crud.py            # Legacy data access — being replaced by services
+  alembic/versions/  # Legacy migrations
 frontend/src/
-  routes/           # TanStack file-based routing (pages)
-  components/       # UI (Admin/, Items/, Common/, UserSettings/, Sidebar/, ui/)
-  client/           # Auto-generated OpenAPI client — DON'T EDIT
-  hooks/            # Custom React hooks
+  routes/            # TanStack file-based routing (pages)
+  components/        # UI (Admin/, Items/, Common/, UserSettings/, Sidebar/, ui/)
+  client/            # Auto-generated OpenAPI client — DON'T EDIT
+  hooks/             # Custom React hooks
 ```
 
-**Important Patterns:**
-- Backend models: `ModelBase → ModelCreate → ModelUpdate → Model(table=True) → ModelPublic`
+**Key Patterns:**
+- New resources: route → `entity_service.py` → Supabase REST (no ORM)
+- Auth: `PrincipalDep` = Clerk JWT → `Principal(user_id, roles, org_id)`
+- Errors: `ServiceError(status_code, message, code)` — 3-arg constructor
+- DB: `SupabaseDep` from `app.core.supabase`, legacy `SessionDep` from `app.api.deps`
 - `src/client/`, `src/routeTree.gen.ts`, `src/components/ui/` are auto-generated — don't edit
 
-**Key Files:** `backend/app/main.py` (FastAPI entry), `backend/app/core/config.py` (settings from `.env`), `frontend/src/main.tsx` (React app + QueryClient + Router)
+**Key Files:** `backend/app/main.py` (entry + lifespan), `backend/app/core/config.py` (settings), `frontend/src/main.tsx` (React + QueryClient + Router)
 
 ## Development Commands
 
@@ -59,8 +67,9 @@ cd backend && fastapi dev app/main.py # Backend only (:8000)
 
 # Testing
 bash ./scripts/test.sh                # All backend tests (Pytest)
+bash ./scripts/test-local.sh          # Backend tests locally
 bunx playwright test                  # Frontend E2E
-bunx playwright test tests/login.spec.ts  # Single E2E test
+uv run pytest backend/tests/unit/ -v  # Unit tests only
 
 # Quality
 bun run lint                          # Frontend (Biome)
@@ -70,6 +79,7 @@ uv run mypy backend/app               # Backend type check
 
 # Utilities
 bash ./scripts/generate-client.sh     # Regenerate OpenAPI client
+supabase db push                      # Apply Supabase migrations
 ```
 
 ## Code Conventions
@@ -79,39 +89,38 @@ bash ./scripts/generate-client.sh     # Regenerate OpenAPI client
 
 ## Testing
 
-**Backend:** Pytest in `backend/tests/` (api/routes/, crud/, scripts/) — `uv run pytest backend/tests/path/to/test.py`
+**Backend:** Pytest in `backend/tests/` — `uv run pytest backend/tests/path/to/test.py`
+- `tests/unit/` — Service layer, models, core modules (MagicMock Supabase, no DB needed)
+- `tests/integration/` — Route handlers with TestClient + dependency overrides
+- `tests/crud/` + `tests/api/routes/` — Legacy tests (require DB)
+
 **Frontend:** Playwright E2E in `frontend/tests/` — `bunx playwright test tests/file.spec.ts`
 
-See `@docs/testing/strategy.md` for coverage requirements and mocking patterns.
+**Coverage target:** 90% backend (enforced in CI). See `@docs/testing/strategy.md`.
 
 ## Database & Migrations
 
-**ORM:** SQLModel | **Models:** `backend/app/models.py`
-
-```bash
-alembic revision --autogenerate -m "desc"  # Create migration
-alembic upgrade head                        # Apply pending
-alembic downgrade -1                        # Rollback last
-alembic history --verbose                   # View history
-```
+**Supabase CLI** (new entity tables): `supabase migration new <name>` → `supabase db push`
+**Alembic** (legacy SQLModel): `alembic revision --autogenerate -m "desc"` → `alembic upgrade head`
 
 Always review autogenerated migrations before applying. See `@docs/data/models.md`.
 
 ## Known Issues
 
-- `SECRET_KEY`, `POSTGRES_PASSWORD`, `FIRST_SUPERUSER_PASSWORD` default to `changethis` — change for staging/production
+- `SUPABASE_SERVICE_KEY` and `CLERK_SECRET_KEY` validated on startup — errors in production if weak/missing
 - Backend syntax errors crash dev container — restart with `docker compose watch`
 - Pre-commit hook auto-regenerates frontend SDK on backend changes
-- Alembic autogenerated migrations need manual review
+- `ServiceError` uses 3-arg form `(status_code, message, code)` — not 4
+- `gh` CLI may default to upstream repo — use `gh repo set-default` if needed
 
 ## Documentation
 
 Key references in `docs/`:
-- `@docs/getting-started/setup.md` - Setup and environment
+- `@docs/getting-started/setup.md` - Setup and environment variables
 - `@docs/getting-started/development.md` - Daily development workflow
-- `@docs/architecture/overview.md` - System architecture
-- `@docs/api/overview.md` - API documentation
-- `@docs/data/models.md` - Data models and schemas
-- `@docs/testing/strategy.md` - Testing approach
+- `@docs/architecture/overview.md` - System architecture and data flows
+- `@docs/api/overview.md` - API documentation and error handling
+- `@docs/data/models.md` - Data models (models package + legacy)
+- `@docs/testing/strategy.md` - Testing approach and mocking patterns
 - `@docs/deployment/environments.md` - Deployment guides
 - `@docs/deployment/ci-pipeline.md` - CI/CD pipeline documentation
