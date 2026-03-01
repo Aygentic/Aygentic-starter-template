@@ -28,4 +28,4 @@ Welcome to the Aygentic Starter Template documentation. This directory contains 
 
 ---
 
-**Last Updated**: 2026-03-01
+**Last Updated**: 2026-03-01 (Infrastructure documentation cleaned up)

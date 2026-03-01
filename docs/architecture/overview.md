@@ -3,7 +3,7 @@ title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
 last-updated: 2026-03-01
-updated-by: "architecture-docs-writer (AYG-76)"
+updated-by: "architecture-docs-writer (legacy cleanup)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -11,9 +11,7 @@ related-code:
   - backend/app/api/routes/
   - backend/app/core/auth.py
   - backend/app/core/config.py
-  - backend/app/core/db.py
   - backend/app/core/http_client.py
-  - backend/app/core/security.py
   - backend/app/core/errors.py
   - backend/app/core/logging.py
   - backend/app/core/middleware.py
@@ -25,9 +23,6 @@ related-code:
   - backend/app/models/entity.py
   - backend/app/services/
   - backend/app/services/entity_service.py
-  - backend/app/crud.py
-  - backend/app/alembic/
-  - backend/scripts/prestart.sh
   - frontend/src/main.tsx
   - frontend/src/routes/
   - frontend/src/client/
@@ -46,7 +41,7 @@ tags: [architecture, system-design, full-stack, fastapi, react]
 
 ## Purpose
 
-The Aygentic Starter Template is a full-stack monorepo providing a production-ready foundation for building microservice web applications. It combines a Python/FastAPI REST API backend with a React/TypeScript single-page application frontend, backed by PostgreSQL, and deployed via Docker Compose with Traefik as a reverse proxy. Authentication is fully delegated to an external dashboard: users authenticate externally and are passed into the microservice via a JWT token in the `?token=` URL parameter. The system delivers Clerk JWT verification, owner-scoped CRUD operations for domain entities via a Supabase service layer, a unified error handling framework that guarantees consistent JSON error responses across all endpoints, and an auto-generated type-safe API client that bridges backend and frontend.
+The Aygentic Starter Template is a full-stack monorepo providing a production-ready foundation for building microservice web applications. It combines a Python/FastAPI REST API backend with a React/TypeScript single-page application frontend, using Supabase (managed PostgreSQL via REST API) for data storage, and deployed via Docker Compose with Traefik as a reverse proxy. Authentication is fully delegated to an external dashboard: users authenticate externally and are passed into the microservice via a JWT token in the `?token=` URL parameter. The system delivers Clerk JWT verification, owner-scoped CRUD operations for domain entities via a Supabase service layer, a unified error handling framework that guarantees consistent JSON error responses across all endpoints, and an auto-generated type-safe API client that bridges backend and frontend.
 
 ## System Context
 
@@ -55,23 +50,17 @@ C4Context
     title System Context Diagram
 
     Person(user, "End User", "Interacts with the application via browser")
-    Person(admin, "Admin / Superuser", "Manages users and system configuration")
 
-    System(system, "Aygentic Starter Template", "Full-stack web application with auth, CRUD, and admin capabilities")
+    System(system, "Aygentic Starter Template", "Full-stack web application with Clerk auth and entity CRUD")
 
     System_Ext(clerk, "Clerk", "External identity provider: JWT issuance, user authentication, organisation management")
-    System_Ext(supabase, "Supabase", "Managed PostgreSQL with REST API (PostgREST); new entity resources use Supabase REST client")
-    System_Ext(smtp, "SMTP Server", "Sends transactional emails: password reset, account creation, test emails")
+    System_Ext(supabase, "Supabase", "Managed PostgreSQL with REST API (PostgREST); entity CRUD via Supabase REST client")
     System_Ext(sentry, "Sentry", "Error monitoring and performance tracing (non-local environments only)")
-    SystemDb_Ext(postgres, "PostgreSQL 18", "Persistent data storage for users and items (legacy ORM path)")
 
     Rel(user, system, "Uses", "HTTPS")
-    Rel(admin, system, "Administers", "HTTPS")
     Rel(system, clerk, "Verifies JWTs via", "HTTPS (JWKS)")
     Rel(system, supabase, "CRUD via REST", "HTTPS (supabase-py)")
-    Rel(system, smtp, "Sends emails via", "SMTP/TLS port 587")
     Rel(system, sentry, "Reports errors to", "HTTPS DSN")
-    Rel(system, postgres, "Reads/writes data", "psycopg3 (postgresql+psycopg)")
 ```
 
 ## Key Components
@@ -81,25 +70,14 @@ C4Context
 | FastAPI Backend | REST API server (titled via `SERVICE_NAME` setting) handling auth, CRUD, and business logic; uses an async `lifespan` context manager to initialise shared resources (Supabase client, HttpClient, Sentry) on startup and clean them up on shutdown; registers unified error handlers at startup; initializes structured logging at startup via `setup_logging(settings)` and registers `RequestPipelineMiddleware` as the outermost middleware | Python 3.10+, FastAPI >=0.114.2, Pydantic 2.x | `backend/app/main.py` |
 | API Router | Mounts versioned route modules under `/api/v1` | FastAPI APIRouter | `backend/app/api/main.py` |
 | Clerk Auth Dependency | Validates Clerk JWT Bearer tokens using the Clerk SDK; extracts `Principal` identity (user_id, session_id, roles, org_id) from JWT claims; maps auth failures to structured `AUTH_*` error codes; sets `request.state.user_id` for logging middleware | clerk-backend-api, httpx | `backend/app/core/auth.py` |
-| Auth & Dependencies (Legacy) | JWT token validation, DB session injection, role-based guards; transitioning from internal HS256 JWT to Clerk JWT with `Principal` identity model (`user_id`, `roles`, `org_id`) | PyJWT, OAuth2PasswordBearer, Annotated Depends | `backend/app/api/deps.py` |
 | HTTP Client | Shared async HTTP client with configurable timeouts (5s connect / 30s read), automatic retry with exponential backoff (0.5s, 1.0s, 2.0s) on 502/503/504, circuit breaker (5 failures / 60s window), and X-Request-ID / X-Correlation-ID header propagation from structlog contextvars; created once during lifespan startup and stored on `app.state.http_client` | httpx, structlog | `backend/app/core/http_client.py` |
 | Supabase Client Factory | Factory function `create_supabase_client()` initialises a Supabase Client from URL + service key; `get_supabase()` FastAPI dependency retrieves it from `app.state`; raises ServiceError 503 on initialisation failure or missing state | supabase-py | `backend/app/core/supabase.py` |
-| Security Module | Password hashing (Argon2 primary + Bcrypt fallback) and JWT token creation (legacy; being replaced by Clerk external auth) | pwdlib (Argon2Hasher, BcryptHasher), PyJWT (HS256) | `backend/app/core/security.py` |
 | Error Handling | Unified exception handler framework; `ServiceError` exception, `STATUS_CODE_MAP`, 4 global handlers registered at startup via `register_exception_handlers(app)` | FastAPI exception handlers, Pydantic response models | `backend/app/core/errors.py` |
 | Structured Logging | Configures structlog with JSON (production/CI) or console (local) renderer; injects service metadata (service, version, environment) and request-scoped fields (request_id, correlation_id) via contextvars into every log entry | structlog >=24.1.0 | `backend/app/core/logging.py` |
 | Request Pipeline Middleware | Outermost middleware: generates UUID v4 request_id, propagates X-Correlation-ID (with validation), binds both to structlog contextvars, sets five security headers on all responses, applies HSTS in production only, logs each request at status-appropriate level (2xx=info, 4xx=warning, 5xx=error), always sets X-Request-ID response header | Starlette BaseHTTPMiddleware | `backend/app/core/middleware.py` |
 | Configuration | Environment-based settings with validation and secret enforcement | pydantic-settings, `.env` file, computed fields | `backend/app/core/config.py` |
-| Database Engine | SQLAlchemy engine creation and initial superuser seeding | SQLModel, psycopg3 (postgresql+psycopg) | `backend/app/core/db.py` |
 | Shared Models (Package) | Pure Pydantic response envelopes (`ErrorResponse`, `ValidationErrorResponse`, `PaginatedResponse[T]`) and auth identity model (`Principal`) | Pydantic 2.x | `backend/app/models/` |
-| Domain Models (Legacy) | SQLModel ORM tables + Pydantic request/response schemas (being migrated into models package) | SQLModel (User, Item + variant schemas) | `backend/app/models.py` |
 | Service Layer (Entity) | Module-level functions accepting `supabase.Client` as first param; owner-scoped CRUD via Supabase REST table builder; `ServiceError` propagation with `ENTITY_*` codes; no-op update short-circuit when no fields are set | Python, supabase-py, postgrest-py | `backend/app/services/entity_service.py` |
-| CRUD Utilities (Legacy) | Data access functions with timing-attack-safe authentication (being replaced by service layer for new resources) | SQLModel Session, Argon2 dummy hash comparison | `backend/app/crud.py` |
-| Database Migrations | Schema version control and migration management | Alembic | `backend/app/alembic/` |
-| Login Routes (legacy) | OAuth2 token login, token test, password recovery/reset — retained in codebase during Clerk migration but superseded by external dashboard auth | FastAPI router | `backend/app/api/routes/login.py` |
-| Users Routes (legacy) | User CRUD, self-registration (`/signup`), profile management — retained during Clerk migration | FastAPI router | `backend/app/api/routes/users.py` |
-| Items Routes (legacy) | Item CRUD with ownership enforcement — retained during Clerk migration | FastAPI router | `backend/app/api/routes/items.py` |
-| Utils Routes | Health check endpoint, test email sending (superuser only) | FastAPI router | `backend/app/api/routes/utils.py` |
-| Private Routes | Local-only user creation (gated by `ENVIRONMENT=local`) | FastAPI router | `backend/app/api/routes/private.py` |
 | React Frontend | Minimal SPA with no public auth pages; token received via `?token=` URL param from external dashboard, stored in `localStorage`; on 401/403 redirects to `VITE_DASHBOARD_URL`; sidebar provides Dashboard + Entities navigation only | React 19.1, TypeScript 5.9, Vite 7.3 (SWC) | `frontend/src/main.tsx` |
 | Frontend Router | File-based routing; all routes under `_layout.tsx` auth guard (redirects to `DASHBOARD_URL` if unauthenticated); routes: `/` (dashboard), `/entities` (entity CRUD) | TanStack Router 1.157+ | `frontend/src/routes/` |
 | Server State Management | API data fetching, caching; global 401/403 error handling clears token and redirects to `DASHBOARD_URL` (not `/login`) | TanStack Query 5.90+ (QueryCache, MutationCache) | `frontend/src/main.tsx` |
@@ -108,9 +86,6 @@ C4Context
 | UI Component Library | Styled component system with dark theme support | Tailwind CSS 4.2, shadcn/ui (new-york variant) | `frontend/src/components/` |
 | Reverse Proxy (Production) | TLS termination via Let's Encrypt, host-based routing, HTTPS redirect | Traefik 3.6 | `compose.yml` (labels) |
 | Reverse Proxy (Local Dev) | HTTP-only proxy with insecure dashboard, no TLS | Traefik 3.6 | `compose.override.yml` |
-| Database Admin | Web-based database inspection tool (pepa-linha-dark theme) | Adminer | `compose.yml` |
-| Mail Catcher (Dev) | Local SMTP trap for development email testing | schickling/mailcatcher (ports 1025/1080) | `compose.override.yml` |
-| Prestart Service | Waits for DB, runs Alembic migrations, seeds initial superuser | Bash, Alembic, Python | `backend/scripts/prestart.sh` |
 | Playwright Runner | Containerised E2E test execution against backend | Playwright, Docker | `compose.override.yml` |
 
 ## Data Flow
@@ -215,18 +190,14 @@ sequenceDiagram
 The application runs as a set of Docker Compose services with two configuration layers:
 
 **Production** (`compose.yml`):
-- `db` -- PostgreSQL 18 with health check, persistent volume (`app-db-data`), env-based credentials
-- `prestart` -- Runs `scripts/prestart.sh` (wait for DB, `alembic upgrade head`, seed superuser), exits on completion
-- `backend` -- FastAPI server on port 8000, depends on healthy `db` + completed `prestart`, health check at `/api/v1/utils/health-check/`
-- `frontend` -- Nginx-served SPA on port 80, built with `VITE_API_URL=https://api.${DOMAIN}`
-- `adminer` -- Database admin UI on port 8080
-- Traefik labels route `api.${DOMAIN}` to backend, `dashboard.${DOMAIN}` to frontend, `adminer.${DOMAIN}` to Adminer, all with HTTPS (Let's Encrypt `certresolver=le`)
+- `backend` -- FastAPI server on port 8000, health check at `/healthz`, env-based configuration for Supabase and Clerk
+- `frontend` -- Nginx-served SPA on port 80, built with `VITE_API_URL=https://api.${DOMAIN}` (behind `ui` profile)
+- Traefik labels route `api.${DOMAIN}` to backend, `dashboard.${DOMAIN}` to frontend, all with HTTPS (Let's Encrypt `certresolver=le`)
 
 **Local Development** (`compose.override.yml` extends `compose.yml`):
 - `proxy` -- Traefik 3.6 with insecure dashboard (port 8090), no TLS, HTTP-only entrypoints
 - `backend` -- Hot-reload via `fastapi run --reload`, `docker compose watch` for file sync, port 8000 exposed
 - `frontend` -- Built with `VITE_API_URL=http://localhost:8000`, port 5173 exposed
-- `mailcatcher` -- Local SMTP trap (SMTP port 1025, web UI port 1080) for email testing
 - `playwright` -- Containerised E2E test runner with blob-report volume mount
 - `traefik-public` network set to `external: false` for local operation
 
@@ -242,9 +213,8 @@ Browser --> :80/:443 (Traefik)
                |
     api.${DOMAIN} --> backend:8000
     dashboard.${DOMAIN} --> frontend:80
-    adminer.${DOMAIN} --> adminer:8080
                |
-    backend --> db:5432 (internal network)
+    backend --> Supabase REST (external, HTTPS)
 ```
 
 ## Model Architecture
@@ -270,25 +240,6 @@ The models directory is now a Python package with two categories of pure Pydanti
 - `EntitiesPublic` -- Paginated collection: `data: list[EntityPublic]`, `count: int`
 
 All Entity models are re-exported via `backend/app/models/__init__.py` for flat imports (`from app.models import EntityCreate, EntityPublic`).
-
-### Domain Models (Legacy, `backend/app/models.py`)
-
-The original domain models follow a layered schema pattern using SQLModel and are being incrementally migrated into the models package (AYG-65 through AYG-74):
-
-```
-ModelBase (shared validated fields)
-  |-- ModelCreate (input for creation, includes password)
-  |-- ModelUpdate (partial input for updates, all optional)
-  |-- Model(table=True) (ORM table with id, hashed_password, created_at, relationships)
-  |-- ModelPublic (API response shape with id, no password)
-  |-- ModelsPublic (paginated list response: {data: [], count: int})
-```
-
-**Entities:**
-- **User** -- `id` (UUID), `email` (unique, indexed), `hashed_password`, `is_active`, `is_superuser`, `full_name`, `created_at` (UTC). Has cascade-delete relationship to Items.
-- **Item** -- `id` (UUID), `title`, `description`, `created_at` (UTC), `owner_id` (FK to User with CASCADE delete).
-
-**Additional schemas:** `UserRegister` (public signup), `UserUpdateMe` (self-service profile), `UpdatePassword` (current + new password), `Token` / `TokenPayload` (JWT), `NewPassword` (reset flow), `Message` (generic response).
 
 ## Error Handling
 
@@ -514,40 +465,23 @@ sequenceDiagram
 
 ## Security Architecture
 
-### Password Hashing
-- **Primary hasher:** Argon2id via `pwdlib.hashers.argon2.Argon2Hasher`
-- **Fallback hasher:** Bcrypt via `pwdlib.hashers.bcrypt.BcryptHasher`
-- **Auto-upgrade:** `verify_and_update()` returns a new hash if the stored hash uses an outdated algorithm, enabling transparent migration from Bcrypt to Argon2
-- **Timing-attack prevention:** When a login attempt targets a non-existent email, `crud.authenticate()` still runs `verify_password()` against a precomputed `DUMMY_HASH` to ensure constant response time
+### JWT Authentication (Clerk)
 
-### JWT Tokens (Transitioning to Clerk)
+Authentication is fully delegated to Clerk as the external identity provider. The backend performs no internal token generation and no password handling.
 
-**Current (legacy):**
-- **Algorithm:** HS256 (symmetric, signed with `SECRET_KEY`)
-- **Payload:** `{"sub": "<user_uuid>", "exp": <utc_timestamp>}`
-- **Expiry:** 8 days (configurable via `ACCESS_TOKEN_EXPIRE_MINUTES`, default 11520)
-- **Validation:** `jwt.decode()` in `get_current_user` dependency, followed by DB lookup and `is_active` check
-- **Storage:** Frontend stores token in `localStorage`, attached via `OpenAPI.TOKEN` callback on every Axios request
-
-**Target (Clerk external auth):**
-- Authentication will be delegated to Clerk as the external identity provider
-- JWTs are issued and signed by Clerk, verified by the backend using Clerk's public keys
-- The `Principal` model (`backend/app/models/auth.py`) represents the authenticated caller: `user_id` (Clerk user ID), `roles` (list of granted roles), `org_id` (Clerk organisation, optional)
-- Internal password hashing and token creation will be removed once the Clerk migration is complete
+- **JWT issuance:** Clerk issues and signs JWTs externally
+- **JWT verification:** Backend validates Clerk JWTs via JWKS using the `PrincipalDep` dependency in `backend/app/core/auth.py`
+- **Identity model:** The `Principal` model (`backend/app/models/auth.py`) represents the authenticated caller: `user_id` (Clerk user ID), `roles` (list of granted roles), `org_id` (Clerk organisation, optional)
+- **Frontend token flow:** Token received via `?token=` URL param from external dashboard, stored in `localStorage`, attached via `OpenAPI.TOKEN` callback on every Axios request
 
 ### Secret Enforcement
-- `Settings._check_default_secret()` raises `ValueError` in staging/production if `SECRET_KEY`, `POSTGRES_PASSWORD`, or `FIRST_SUPERUSER_PASSWORD` are left as `"changethis"`
+- `Settings._check_default_secret()` raises `ValueError` in staging/production if `SUPABASE_SERVICE_KEY` or `CLERK_SECRET_KEY` are left as default values
 - In local environment, the same check emits a warning instead
 
 ### CORS
 - `BACKEND_CORS_ORIGINS` parsed from comma-separated string or JSON array
 - `FRONTEND_HOST` is always appended to allowed origins
 - Middleware configured with `allow_credentials=True`, wildcard methods and headers
-
-### Role-Based Access
-- **Regular users:** Can manage own profile, own items, self-register via `/signup`
-- **Superusers:** Full CRUD on all users and items, access to test-email endpoint, password recovery HTML preview
-- Guard implemented as `get_current_active_superuser` dependency (raises 403 if `user.is_superuser` is False)
 
 ## Frontend Architecture
 
@@ -591,9 +525,9 @@ Key decisions are documented as ADRs in `docs/architecture/decisions/`:
 
 ## Known Constraints
 
-1. **Single-database architecture** -- The system uses a single PostgreSQL 18 instance for all data. This simplifies operations but limits read/write scaling to vertical scaling unless read replicas are introduced.
+1. **Supabase-managed database** -- The system uses Supabase (managed PostgreSQL via REST API) for all data storage. There is no local PostgreSQL instance. This simplifies operations but introduces a runtime dependency on the Supabase service and network latency for all database operations.
 
-2. **Stateless JWT with no revocation** -- Access tokens cannot be individually revoked by the microservice once issued. Revocation is the responsibility of the external identity provider (Clerk). The legacy internal `SECRET_KEY`-based revocation mechanism is retained only while the Clerk migration is in progress.
+2. **Stateless JWT with no revocation** -- Access tokens cannot be individually revoked by the microservice. Revocation is the responsibility of the external identity provider (Clerk).
 
 3. **localStorage token storage** -- JWT tokens are stored in `localStorage`, which is accessible to any JavaScript running on the same origin. This trades security (compared to httpOnly cookies) for simplicity in the SPA architecture. XSS vulnerabilities would expose tokens. The token is injected by the external dashboard via `?token=` URL param and cleaned from the URL immediately after extraction.
 
@@ -601,15 +535,13 @@ Key decisions are documented as ADRs in `docs/architecture/decisions/`:
 
 5. **Auto-generated API client (build-time dependency)** -- The frontend API client is generated from the backend's OpenAPI schema via `@hey-api/openapi-ts`. Any backend API change requires regenerating the client (`scripts/generate-client.sh`) to maintain type safety. The pre-commit hook automates this, but it creates a build-time coupling.
 
-6. **Environment-gated private routes** -- The `private` API router (unrestricted user creation) is only mounted when `ENVIRONMENT=local`. This is a configuration-based guard rather than an infrastructure-based one. Misconfigured environments could expose this endpoint.
+6. **Default secrets in local development** -- `SUPABASE_SERVICE_KEY` and `CLERK_SECRET_KEY` are validated on startup. The `Settings` validator warns in local mode but raises `ValueError` in staging/production, preventing deployment with default credentials.
 
-7. **Default secrets in local development** -- `SECRET_KEY`, `POSTGRES_PASSWORD`, and `FIRST_SUPERUSER_PASSWORD` default to `"changethis"`. The `Settings` validator warns in local mode but raises `ValueError` in staging/production, preventing deployment with default credentials.
+7. **Conditional integration test fixtures** -- `backend/tests/conftest.py` guards integration-level fixtures (test client, auth token helpers) behind a `try/except` import block (`_INTEGRATION_DEPS_AVAILABLE`). This allows unit tests in `backend/tests/unit/` to run in isolation without the full app context.
 
-8. **Conditional integration test fixtures** -- `backend/tests/conftest.py` guards integration-level fixtures (DB session, test client, auth token helpers) behind a `try/except` import block (`_INTEGRATION_DEPS_AVAILABLE`). This allows unit tests in `backend/tests/unit/` to run in isolation without a database or the full app context. The guard is temporary while integration fixtures are being migrated (AYG-65 through AYG-74).
+8. **Clerk-only authentication** -- The migration from legacy internal auth to Clerk is complete. All authentication is delegated to Clerk as the external identity provider. There is no internal password hashing, token generation, or user management. The frontend has no login, signup, or password-recovery pages -- all authentication UI is handled by the external dashboard.
 
-9. **Auth in transition (legacy + Clerk)** -- The codebase currently contains both legacy internal HS256 JWT authentication (`backend/app/core/security.py`, `backend/app/api/deps.py`) and the new Clerk-oriented `Principal` model (`backend/app/models/auth.py`). Both coexist during the migration; the legacy auth path will be removed once Clerk integration is complete. The frontend has been fully migrated: all login, signup, recover-password, reset-password, admin, settings, and items routes and their associated components have been removed. Authentication UI is entirely delegated to the external dashboard.
-
-10. **Middleware ordering sensitivity** -- `RequestPipelineMiddleware` must remain the last `add_middleware()` call in `main.py` to stay outermost. Adding new middleware after it will wrap it, causing security headers and X-Request-ID to be absent on responses short-circuited by the new middleware.
+9. **Middleware ordering sensitivity** -- `RequestPipelineMiddleware` must remain the last `add_middleware()` call in `main.py` to stay outermost. Adding new middleware after it will wrap it, causing security headers and X-Request-ID to be absent on responses short-circuited by the new middleware.
 
 ## Related Documents
 

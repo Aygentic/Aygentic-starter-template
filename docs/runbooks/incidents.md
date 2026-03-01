@@ -3,17 +3,16 @@ title: "Incident Response Runbook"
 doc-type: how-to
 status: published
 id: "RB-0001"
-service: "Full Stack FastAPI Project"
+service: "Aygentic Starter Template"
 severity: "P1-P4"
 owner: "DevOps Team"
 last-reviewed: 2026-02-26
 estimated-duration: "15-60 minutes"
-last-updated: 2026-02-28
+last-updated: 2026-03-01
 updated-by: "infra docs writer"
 related-code:
   - compose.yml
   - backend/app/core/config.py
-  - backend/app/api/utils.py
 related-docs:
   - docs/deployment/environments.md
   - docs/getting-started/setup.md
@@ -70,7 +69,7 @@ Confirm it's actually P1 by checking:
 
 ```bash
 # Is backend down?
-curl -f https://api.example.com/api/v1/utils/health-check/
+curl -f https://api.example.com/healthz
 # Expected: 200 OK with response
 # If: timeout, 500, or no response = MAJOR issue
 
@@ -163,7 +162,7 @@ docker compose up -d
 
 ```bash
 # Check health
-curl -f https://api.example.com/api/v1/utils/health-check/
+curl -f https://api.example.com/healthz
 
 # Check logs for errors
 docker compose logs backend | tail -20
@@ -206,7 +205,7 @@ git revert HEAD
 git push  # This triggers automatic redeployment (full image rebuild)
 
 # Wait 3-5 minutes for image rebuild and redeploy
-# Verify: curl https://api.example.com/api/v1/utils/health-check/
+# Verify: curl https://api.example.com/healthz
 ```
 
 Use Option B-2 when the problematic image has already been removed from GHCR or when the rollback target predates GHCR image history.
@@ -387,7 +386,7 @@ docker compose logs db | grep "ready to accept"
 
 ```bash
 # Test backend is working
-curl https://api.example.com/api/v1/utils/health-check/
+curl https://api.example.com/healthz
 # Should return 200
 
 # Check frontend logs
@@ -401,27 +400,7 @@ docker compose restart frontend
 docker compose logs proxy | grep "dashboard.example.com"
 ```
 
-### Scenario 4: Email Not Sending (Staging/Prod)
-
-```bash
-ssh root@example.com && cd /root/code/app
-
-# Check SMTP config
-docker compose logs backend | grep -i smtp
-
-# Verify secrets are set
-# Can't see values, but check they're referenced:
-docker compose config | grep SMTP_HOST
-
-# Test SMTP connectivity
-# Requires telnet or similar (not available in Docker)
-# Instead: trigger email from admin panel
-# Check backend logs for SMTP errors
-
-# If still broken: escalate to email provider
-```
-
-### Scenario 5: High Memory or CPU Usage
+### Scenario 4: High Memory or CPU Usage
 
 ```bash
 ssh root@example.com && cd /root/code/app
@@ -491,7 +470,7 @@ git push
 docker compose logs backend | tail -20
 
 # Verify service healthy
-curl https://api.example.com/api/v1/utils/health-check/
+curl https://api.example.com/healthz
 ```
 
 **Don't use `git reset --hard`** — it removes commit history. Use `git revert` instead.
@@ -588,7 +567,7 @@ git push
 
 Setup/verify these are configured:
 
-- [ ] **Health checks** - Backend responds to `/api/v1/utils/health-check/` every 10 seconds
+- [ ] **Health checks** - Backend responds to `/healthz` every 10 seconds
 - [ ] **Sentry** - Error tracking initialized in lifespan startup (only if `SENTRY_DSN` is set), flushed gracefully on shutdown
 - [ ] **Uptime monitoring** - External service checks https://api.example.com every 5 minutes
 - [ ] **Resource monitoring** - Server monitoring memory, disk, CPU usage
@@ -637,7 +616,7 @@ docker stats
 docker system df
 
 # Database access
-docker compose exec db psql -U postgres -d app -c "SELECT COUNT(*) FROM users;"
+docker compose exec db psql -U postgres -d app -c "SELECT COUNT(*) FROM entities;"
 
 # View deployment history
 git log --oneline -20

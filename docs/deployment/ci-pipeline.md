@@ -212,7 +212,7 @@ Checks `PRE_COMMIT` secret availability to differentiate own-repo vs fork:
 - `check-added-large-files`
 - `check-toml`
 - `check-yaml --unsafe`
-- `end-of-file-fixer` (excludes generated client and email templates)
+- `end-of-file-fixer` (excludes generated client)
 - `trailing-whitespace` (excludes generated client)
 - `biome check --write` (frontend files)
 - `ruff check --fix` (Python files)
@@ -514,7 +514,6 @@ The backend requires these core dependencies (defined in `backend/pyproject.toml
 | Dependency | Version | Purpose |
 |-----------|---------|---------|
 | `fastapi` | >=0.114.2 | Web framework |
-| `sqlmodel` | >=0.0.21 | ORM with SQLAlchemy |
 | `pydantic-settings` | >=2.2.1 | Configuration management |
 | `sentry-sdk` | >=2.0.0 | Error tracking |
 | `structlog` | >=24.1.0 | Structured logging |
@@ -538,7 +537,7 @@ ENVIRONMENT=local                    # Relaxed validation for tests
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| Test Backend fails on migration step | DB not healthy yet | Check `docker compose up -d db mailcatcher` health check passes before prestart |
+| Test Backend fails on startup | Backend not healthy yet | Check `docker compose logs backend` for startup errors and verify environment variables |
 | Coverage below 90% | New code without tests | Add tests; view coverage report in Artifacts → `coverage-html` |
 | Playwright shards fail inconsistently | Flaky tests (`--fail-on-flaky-tests`) | Identify flaky test from HTML report artifact; fix race conditions |
 | Deploy to staging fails | GHCR push permission denied | Verify `GITHUB_TOKEN` has `packages: write` permission in the workflow |

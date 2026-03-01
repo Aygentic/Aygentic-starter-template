@@ -3,7 +3,7 @@ title: "Development Workflow"
 doc-type: how-to
 status: published
 last-updated: 2026-03-01
-updated-by: "infra docs writer (AYG-76)"
+updated-by: "infra docs writer"
 related-code:
   - backend/pyproject.toml
   - frontend/package.json
@@ -13,7 +13,6 @@ related-code:
   - compose.override.yml
   - supabase/config.toml
   - supabase/migrations/**
-  - backend/alembic/versions/**
 related-docs:
   - docs/getting-started/setup.md
   - docs/getting-started/contributing.md
@@ -198,11 +197,11 @@ Files should follow this import structure:
 ```python
 # External packages
 from fastapi import FastAPI
-from sqlmodel import SQLModel
+from pydantic import BaseModel
 
 # Internal modules (absolute paths)
 from app.core.config import settings
-from app.api import users
+from app.api.routes import entities
 
 # Relative imports
 from .utils import helper_function
@@ -213,41 +212,15 @@ from typing import Optional
 
 ## Database Management
 
-### Two Migration Systems
+### Database Migrations
 
-This project uses two complementary migration tools:
+This project uses Supabase CLI for database migrations:
 
 | System | Tool | Files | Purpose |
 |--------|------|-------|---------|
-| **Alembic** | SQLAlchemy | `backend/alembic/versions/` | Legacy SQLModel tables |
 | **Supabase CLI** | Supabase | `supabase/migrations/` | Entity tables with RLS |
 
-#### Alembic (SQLModel)
-
-Run migrations automatically on startup. To run manually:
-
-```bash
-cd backend
-alembic upgrade head
-```
-
-Create a migration after modifying `app/models`:
-
-```bash
-cd backend
-alembic revision --autogenerate -m "Add user email field"
-alembic upgrade head
-```
-
-Check migration status:
-
-```bash
-cd backend
-alembic current  # Show current revision
-alembic history  # Show all revisions
-```
-
-#### Supabase CLI (Entity Tables)
+#### Supabase CLI
 
 Before using Supabase CLI, configure your project:
 
@@ -275,12 +248,7 @@ supabase migration new create_entities
 supabase db push
 ```
 
-### When to Use Each
-
-**Alembic:**
-- Changes to FastAPI/SQLModel tables
-- Python ORM-based schema management
-- Tables without row-level security
+### Database Migration Workflow
 
 **Supabase CLI:**
 - New entity tables with row-level security
@@ -344,9 +312,6 @@ cd frontend && bun run lint && bunx playwright test
 Tests live in `backend/tests/`:
 - `tests/unit/` - Service layer, models, core modules (MagicMock, no DB needed)
 - `tests/integration/` - Route handlers with TestClient + dependency overrides
-- `tests/crud/` - Legacy database operation tests (require DB)
-- `tests/api/routes/` - Legacy API endpoint tests (require DB)
-- `tests/scripts/` - Script tests
 
 ```bash
 cd backend
@@ -417,20 +382,6 @@ Built-in development features:
 - React DevTools browser extension
 - TanStack Query DevTools (http://localhost:5173 with dev query tools)
 - TanStack Router DevTools
-
-### Database Inspection
-
-Adminer at http://localhost:8080:
-- Server: db
-- Username: postgres
-- Password: value of POSTGRES_PASSWORD in .env
-- Database: app
-
-## Email Testing
-
-Mailcatcher at http://localhost:1080 captures all emails sent by backend in development.
-
-No configuration needed - automatically pointed to Mailcatcher in `compose.override.yml`.
 
 ## Performance Tips
 

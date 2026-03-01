@@ -2,10 +2,10 @@
 title: "API Overview"
 doc-type: reference
 status: active
-version: "1.6.0"
+version: "1.7.0"
 base-url: "/api/v1"
 last-updated: 2026-03-01
-updated-by: "api-docs-writer (AYG-76)"
+updated-by: "api-docs-writer (docs-cleanup)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -15,7 +15,6 @@ related-code:
   - backend/app/models/entity.py
   - backend/app/services/entity_service.py
   - backend/app/core/config.py
-  - backend/app/core/security.py
   - backend/app/core/errors.py
 related-docs:
   - docs/architecture/overview.md
@@ -39,7 +38,7 @@ tags: [api, rest, overview]
 
 ## Authentication
 
-> **AYG-65:** Authentication has migrated from an internal HS256 JWT to **Clerk JWT**. The `/login/access-token` password-flow endpoint is deprecated as part of this migration (see [Login & Authentication](endpoints/login.md)).
+> **AYG-65:** Authentication has migrated from an internal HS256 JWT to **Clerk JWT**. Auth uses Clerk JWT with no internal login endpoint — clients obtain tokens directly from Clerk outside this API.
 
 The API uses Clerk-issued JWT bearer tokens. Clients obtain a token directly from Clerk (via the Clerk SDK or Clerk-hosted UI), then pass it to the API on every request.
 
@@ -248,12 +247,13 @@ CORS allowed origins are controlled by two configuration values:
 - [Operational Endpoints — Health, Readiness, Version](endpoints/health.md)
 - [Entities](endpoints/entities.md)
 
-> **Removed in AYG-71:** Login, Users, Items, Utils, and Private routes have been removed from the router. Their documentation files are retained for historical reference with a `status: deprecated` marker.
+> **Removed in AYG-71:** Login, Users, Items, Utils, and Private routes have been removed from the router. Legacy endpoint docs (items, login, users, utils) were removed as part of the documentation cleanup.
 
 ## Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.7.0 | 2026-03-01 | Docs cleanup: Removed deprecated endpoint doc files (items, login, users, utils) and stale references to legacy security module |
 | 1.6.0 | 2026-03-01 | AYG-76: Removed stale `skip` migration note (all endpoints use `offset`); removed `Message` data model section (DELETE /entities returns 204 No Content, no body); updated curl example from removed `/users/me` to `/entities/`; marked utils.md as removed |
 | 1.5.0 | 2026-02-28 | AYG-71: Legacy routes (login, users, items, utils, private) removed from router; only /api/v1/entities and root operational endpoints active; unified error shape confirmed applied to all active endpoints |
 | 1.4.0 | 2026-02-28 | AYG-70: Entity CRUD route handlers registered; all five endpoints live |

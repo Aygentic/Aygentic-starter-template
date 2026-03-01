@@ -39,7 +39,7 @@ This project uses three deployment environments with progressively stricter conf
 All environments use:
 - **Frontend**: React 19 + TypeScript, served by Nginx, managed by Traefik
 - **Backend**: FastAPI + Python 3.10, run by uvicorn, managed by Traefik
-- **Database**: PostgreSQL 18 (local) or Supabase managed service (staging/production)
+- **Database**: Supabase managed PostgreSQL (all environments)
 - **Authentication**: Clerk for user authentication and JWT verification
 - **Proxy**: Traefik 3.6 for routing and HTTPS/TLS certificates via Let's Encrypt
 
@@ -86,8 +86,6 @@ Teams deploying to managed platforms (Railway, Cloud Run, Fly.io) should use the
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:8000 |
 | API Documentation | http://localhost:8000/docs |
-| Database Admin (Adminer) | http://localhost:8080 |
-| Email Testing (Mailcatcher) | http://localhost:1080 |
 | Proxy Dashboard (Traefik) | http://localhost:8090 |
 
 ### Environment Variables (Local)
@@ -109,14 +107,11 @@ Teams deploying to managed platforms (Railway, Cloud Run, Fly.io) should use the
 
 | Service | Type | Notes |
 |---------|------|-------|
-| PostgreSQL 18 | Database | Local postgres:18 container |
 | FastAPI | Backend | Python 3.10 with uvicorn |
-| React | Frontend | Node 18 with Vite dev server |
+| React | Frontend | Vite dev server |
 | Traefik | Reverse Proxy | Routes traffic by domain |
-| Mailcatcher | Email | Captures emails, UI at :1080 |
-| Adminer | Database | Web UI for database management |
 | Clerk | Authentication | External managed service |
-| Supabase | Storage | External managed service |
+| Supabase | Database | External managed service |
 
 ### Running Locally
 
@@ -448,16 +443,13 @@ When rotating secrets:
 
 ## Supabase Migrations
 
-This project uses two complementary migration systems:
+All database migrations are managed by the Supabase CLI.
 
-### Migration Systems
+### Migration System
 
-| System | Tool | Location | Use Case | When to Run |
-|--------|------|----------|----------|------------|
-| **Alembic** | SQLAlchemy | `backend/alembic/versions/` | Legacy SQLModel tables | On backend model changes |
-| **Supabase CLI** | Supabase | `supabase/migrations/` | Entity tables with RLS | On entity model changes |
-
-**Why both?** During the transition to Supabase, Alembic manages existing SQLModel-based tables while Supabase CLI manages new entity tables with row-level security policies.
+| Tool | Location | When to Run |
+|------|----------|------------|
+| **Supabase CLI** | `supabase/migrations/` | On any schema change |
 
 ### Supabase CLI Migrations
 
@@ -511,17 +503,12 @@ All Supabase secrets are managed via:
 - **Local**: `.env` file (git-ignored)
 - **Staging/Production**: GitHub Secrets
 
-#### When to Use Supabase CLI
+#### When to Run Migrations
 
-Use Supabase CLI for:
-- New entity tables requiring row-level security
-- Migrations with PostgreSQL-specific features (triggers, functions, extensions)
-- Data that requires user isolation
-
-Use Alembic for:
-- Changes to existing FastAPI/SQLModel tables
-- Python ORM-based schema management
-- Tables without RLS requirements
+Run `supabase db push` after:
+- Creating new tables or modifying existing schemas
+- Adding PostgreSQL-specific features (triggers, functions, extensions)
+- Adding or updating row-level security policies
 
 ---
 

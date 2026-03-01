@@ -62,14 +62,11 @@ docker compose watch
 
 On first run, this will:
 1. Build backend and frontend images
-2. Start PostgreSQL database
-3. Run database migrations via the `prestart` service
-4. Start FastAPI backend server
-5. Start Vite frontend dev server
-6. Start Traefik proxy
-7. Start Mailcatcher for email testing
+2. Start FastAPI backend server
+3. Start Vite frontend dev server
+4. Start Traefik proxy
 
-The first startup takes ~1-2 minutes as the database initializes and migrations run.
+The first startup takes ~1-2 minutes as Docker builds the images.
 
 ### Verify Installation
 
@@ -80,8 +77,6 @@ Once `docker compose watch` shows services are running, open these URLs in your 
 | Frontend | http://localhost:5173 | React/TypeScript app |
 | Backend API | http://localhost:8000 | FastAPI REST API |
 | API Docs (Swagger) | http://localhost:8000/docs | Interactive API documentation |
-| Database Admin | http://localhost:8080 | Adminer DB browser |
-| Email Testing | http://localhost:1080 | Mailcatcher for captured emails |
 | Proxy Dashboard | http://localhost:8090 | Traefik routing status |
 
 ### Run Tests to Verify Setup
@@ -182,26 +177,25 @@ Backend will be at http://localhost:8000 from your local uvicorn server.
 **Stop specific service:**
 
 ```bash
-docker compose stop db  # Stop database
+docker compose stop backend  # Stop backend
 docker compose logs backend  # View service logs
 docker compose restart backend  # Restart service
 ```
 
 ## Database Setup
 
-Migrations run automatically on startup via `docker compose`. To run manually:
+Migrations are managed by the Supabase CLI. To apply pending migrations:
 
 ```bash
-cd backend
-alembic upgrade head
+supabase db push
 ```
 
 To create a new migration after schema changes:
 
 ```bash
-cd backend
-alembic revision --autogenerate -m "description of changes"
-alembic upgrade head
+supabase migration new <description-of-changes>
+# Edit the generated SQL file in supabase/migrations/
+supabase db push
 ```
 
 ## Troubleshooting
@@ -210,9 +204,8 @@ alembic upgrade head
 |-------|----------|
 | Port 5173 already in use | Kill the process: `lsof -ti:5173 \| xargs kill -9` or change in compose.override.yml |
 | Port 8000 already in use | Kill the process: `lsof -ti:8000 \| xargs kill -9` or change in compose.override.yml |
-| Port 5432 (database) already in use | Kill the process: `lsof -ti:5432 \| xargs kill -9` |
-| Database connection refused | Wait 30+ seconds for `db` service healthcheck. Check logs: `docker compose logs db` |
-| Migrations failing | Check Alembic migration status: `alembic current`. Drop and recreate: `docker compose down -v && docker compose watch` |
+| Supabase connection error | Verify `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in `.env`. Check Supabase dashboard for service status |
+| Migrations failing | Check Supabase dashboard for migration status. Re-run: `supabase db push` |
 | Backend/frontend not connecting | Verify `BACKEND_CORS_ORIGINS` in .env. Check logs: `docker compose logs backend` |
 | `docker compose watch` not syncing code | Volumes mount correctly. Check logs: `docker compose logs backend` or `docker compose logs frontend` |
 | Backend logs show plain text instead of JSON | Verify `LOG_FORMAT=json` in `.env`. Default is `json`; the console renderer only activates when `LOG_FORMAT=console`. |
@@ -222,8 +215,8 @@ alembic upgrade head
 
 ## Docker Compose Files
 
-- **compose.yml** - Main config with db, backend, frontend, adminer, prestart
-- **compose.override.yml** - Development overrides: ports, live reload, Traefik dashboard, Mailcatcher
+- **compose.yml** - Main config with backend and frontend services
+- **compose.override.yml** - Development overrides: ports, live reload, Traefik proxy, Playwright
 
 After changing `.env`, restart the stack:
 

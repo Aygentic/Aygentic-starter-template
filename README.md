@@ -7,7 +7,6 @@ A production-ready full-stack microservice template: **FastAPI** backend, **Reac
 | Category | Technology |
 |----------|-----------|
 | Backend | Python >=3.10, FastAPI >=0.114.2 |
-| ORM | SQLModel >=0.0.21 (SQLAlchemy) |
 | Database | Supabase (managed PostgreSQL) |
 | Frontend | TypeScript 5.9, React 19.1, Vite 7.3 (SWC) |
 | Routing | TanStack Router 1.157+ (file-based) |
@@ -40,7 +39,6 @@ The stack will be available at:
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:8000 |
 | API Docs (Swagger) | http://localhost:8000/docs |
-| Database Admin | http://localhost:8080 |
 
 See [docs/getting-started/setup.md](docs/getting-started/setup.md) for full installation details.
 
@@ -319,14 +317,7 @@ supabase db push
 # 4. Then publish the GitHub Release to trigger production deploy
 ```
 
-This project uses two migration tools:
-
-| Tool | Files | Purpose |
-|------|-------|---------|
-| Supabase CLI | `supabase/migrations/` | Entity tables with row-level security |
-| Alembic | `backend/alembic/versions/` | SQLModel-managed tables |
-
-Run `alembic upgrade head` for Alembic migrations and `supabase db push` for Supabase CLI migrations. Both must be applied before releasing.
+Migrations are managed by the Supabase CLI. All migration files live in `supabase/migrations/`. Run `supabase db push` to apply pending migrations before releasing.
 
 ---
 
@@ -491,8 +482,3 @@ See `.env.example` for the full variable reference including CI/CD platform secr
 | [docs/deployment/ci-pipeline.md](docs/deployment/ci-pipeline.md) | All GitHub Actions workflows in detail |
 | [docs/runbooks/incidents.md](docs/runbooks/incidents.md) | Incident response and escalation procedures |
 
----
-
-## License
-
-MIT
