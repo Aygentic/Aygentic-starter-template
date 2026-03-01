@@ -1,11 +1,11 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { Check, Copy } from "lucide-react"
 
-import type { ItemPublic } from "@/client"
+import type { EntityPublic } from "@/client"
 import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { cn } from "@/lib/utils"
-import { ItemActionsMenu } from "./ItemActionsMenu"
+import { EntityActionsMenu } from "./EntityActionsMenu"
 
 function CopyId({ id }: { id: string }) {
   const [copiedText, copy] = useCopyToClipboard()
@@ -31,7 +31,7 @@ function CopyId({ id }: { id: string }) {
   )
 }
 
-export const columns: ColumnDef<ItemPublic>[] = [
+export const columns: ColumnDef<EntityPublic>[] = [
   {
     accessorKey: "id",
     header: "ID",
@@ -66,7 +66,7 @@ export const columns: ColumnDef<ItemPublic>[] = [
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => (
       <div className="flex justify-end">
-        <ItemActionsMenu item={row.original} />
+        <EntityActionsMenu entity={row.original} />
       </div>
     ),
   },

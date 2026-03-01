@@ -10,18 +10,21 @@ import ReactDOM from "react-dom/client"
 import { ApiError, OpenAPI } from "./client"
 import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
+import { clearToken, DASHBOARD_URL, getToken, initAuth } from "./hooks/useAuth"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
 
+initAuth()
+
 OpenAPI.BASE = import.meta.env.VITE_API_URL
 OpenAPI.TOKEN = async () => {
-  return localStorage.getItem("access_token") || ""
+  return getToken() || ""
 }
 
 const handleApiError = (error: Error) => {
   if (error instanceof ApiError && [401, 403].includes(error.status)) {
-    localStorage.removeItem("access_token")
-    window.location.href = "/login"
+    clearToken()
+    window.location.href = DASHBOARD_URL
   }
 }
 const queryClient = new QueryClient({

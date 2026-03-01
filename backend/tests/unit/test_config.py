@@ -48,7 +48,6 @@ def test_optional_vars_use_defaults(monkeypatch):
     assert settings.LOG_FORMAT == "json"
     assert settings.API_V1_STR == "/api/v1"
     assert settings.BACKEND_CORS_ORIGINS == []
-    assert settings.WITH_UI is False
     assert settings.CLERK_JWKS_URL is None
     assert settings.CLERK_AUTHORIZED_PARTIES == []
     assert settings.GIT_COMMIT == "unknown"

@@ -1,11 +1,6 @@
 import { Link } from "@tanstack/react-router"
 
-import { useTheme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
-import icon from "/assets/images/fastapi-icon.svg"
-import iconLight from "/assets/images/fastapi-icon-light.svg"
-import logo from "/assets/images/fastapi-logo.svg"
-import logoLight from "/assets/images/fastapi-logo-light.svg"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
@@ -18,38 +13,30 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  const fullLogo = isDark ? logoLight : logo
-  const iconLogo = isDark ? iconLight : icon
-
   const content =
     variant === "responsive" ? (
       <>
-        <img
-          src={fullLogo}
-          alt="FastAPI"
+        <span
           className={cn(
-            "h-6 w-auto group-data-[collapsible=icon]:hidden",
+            "text-lg font-bold group-data-[collapsible=icon]:hidden",
             className,
           )}
-        />
-        <img
-          src={iconLogo}
-          alt="FastAPI"
+        >
+          Starter
+        </span>
+        <span
           className={cn(
-            "size-5 hidden group-data-[collapsible=icon]:block",
+            "text-lg font-bold hidden group-data-[collapsible=icon]:block",
             className,
           )}
-        />
+        >
+          S
+        </span>
       </>
     ) : (
-      <img
-        src={variant === "full" ? fullLogo : iconLogo}
-        alt="FastAPI"
-        className={cn(variant === "full" ? "h-6 w-auto" : "size-5", className)}
-      />
+      <span className={cn("text-lg font-bold", className)}>
+        {variant === "full" ? "Starter" : "S"}
+      </span>
     )
 
   if (!asLink) {

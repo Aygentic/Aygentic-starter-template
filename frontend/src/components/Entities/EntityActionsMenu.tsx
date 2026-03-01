@@ -1,28 +1,22 @@
 import { EllipsisVertical } from "lucide-react"
 import { useState } from "react"
 
-import type { UserPublic } from "@/client"
+import type { EntityPublic } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import useAuth from "@/hooks/useAuth"
-import DeleteUser from "./DeleteUser"
-import EditUser from "./EditUser"
+import DeleteEntity from "../Entities/DeleteEntity"
+import EditEntity from "../Entities/EditEntity"
 
-interface UserActionsMenuProps {
-  user: UserPublic
+interface EntityActionsMenuProps {
+  entity: EntityPublic
 }
 
-export const UserActionsMenu = ({ user }: UserActionsMenuProps) => {
+export const EntityActionsMenu = ({ entity }: EntityActionsMenuProps) => {
   const [open, setOpen] = useState(false)
-  const { user: currentUser } = useAuth()
-
-  if (user.id === currentUser?.id) {
-    return null
-  }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -32,8 +26,8 @@ export const UserActionsMenu = ({ user }: UserActionsMenuProps) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <EditUser user={user} onSuccess={() => setOpen(false)} />
-        <DeleteUser id={user.id} onSuccess={() => setOpen(false)} />
+        <EditEntity entity={entity} onSuccess={() => setOpen(false)} />
+        <DeleteEntity id={entity.id} onSuccess={() => setOpen(false)} />
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Trash2 } from "lucide-react"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
 
-import { UsersService } from "@/client"
+import { EntitiesService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,37 +18,32 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
-interface DeleteUserProps {
+interface DeleteEntityProps {
   id: string
   onSuccess: () => void
 }
 
-const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
+const DeleteEntity = ({ id, onSuccess }: DeleteEntityProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
-  const { handleSubmit } = useForm()
 
-  const deleteUser = async (id: string) => {
-    await UsersService.deleteUser({ userId: id })
+  const deleteEntity = async (id: string) => {
+    await EntitiesService.deleteEntity({ entityId: id })
   }
 
   const mutation = useMutation({
-    mutationFn: deleteUser,
+    mutationFn: deleteEntity,
     onSuccess: () => {
-      showSuccessToast("The user was deleted successfully")
+      showSuccessToast("The entity was deleted successfully")
       setIsOpen(false)
       onSuccess()
     },
     onError: handleError.bind(showErrorToast),
     onSettled: () => {
-      queryClient.invalidateQueries()
+      queryClient.invalidateQueries({ queryKey: ["entities"] })
     },
   })
-
-  const onSubmit = async () => {
-    mutation.mutate(id)
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -59,16 +53,20 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
         onClick={() => setIsOpen(true)}
       >
         <Trash2 />
-        Delete User
+        Delete Entity
       </DropdownMenuItem>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            mutation.mutate(id)
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
+            <DialogTitle>Delete Entity</DialogTitle>
             <DialogDescription>
-              All items associated with this user will also be{" "}
-              <strong>permanently deleted.</strong> Are you sure? You will not
-              be able to undo this action.
+              This entity will be permanently deleted. Are you sure? You will
+              not be able to undo this action.
             </DialogDescription>
           </DialogHeader>
 
@@ -92,4 +90,4 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
   )
 }
 
-export default DeleteUser
+export default DeleteEntity

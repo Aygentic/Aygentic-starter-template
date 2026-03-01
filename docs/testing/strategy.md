@@ -31,7 +31,7 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 |-------|-----------|-----------|---------|
 | Unit | 70% | Pytest | Service layer, models, core modules, utilities |
 | Integration | 20% | Pytest | Route handlers with TestClient, dependency overrides |
-| E2E | 10% | Playwright | Critical user workflows (login, CRUD, settings) |
+| E2E | 10% | Playwright | Critical user workflows (entity CRUD, navigation) |
 
 ## Commands
 
@@ -70,10 +70,10 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 | Convention | Pattern | Example |
 |------------|---------|---------|
-| Location | Separate `tests/` directory | `frontend/tests/login.spec.ts` |
-| Naming | `*.spec.ts` | `admin.spec.ts`, `items.spec.ts` |
+| Location | Separate `tests/` directory | `frontend/tests/entities.spec.ts` |
+| Naming | `*.spec.ts` | `entities.spec.ts`, `navigation.spec.ts` |
 | Structure | Playwright test/expect | `test("description", async ({ page }) => {})` |
-| Auth setup | Setup project dependency | `tests/auth.setup.ts` with storageState |
+| Auth setup | Token injection via `addInitScript()` | `tests/auth.setup.ts` injects JWT into localStorage |
 
 ## Mocking
 
@@ -92,9 +92,8 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 | Type | Pattern | When to Use |
 |------|---------|-------------|
-| Auth state | Playwright storageState | Tests requiring logged-in user |
+| Auth state | `page.addInitScript()` token injection into localStorage | Tests requiring authenticated state |
 | API | Running Docker backend | Full integration with real API |
-| Users | Private API (`/api/v1/private/users/`) | Create test users via API |
 
 ## Coverage Configuration
 
