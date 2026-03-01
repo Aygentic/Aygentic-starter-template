@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
@@ -7,15 +7,16 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { isLoggedIn } from "@/hooks/useAuth"
+import { DASHBOARD_URL, isAuthenticated } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async () => {
-    if (!isLoggedIn()) {
-      throw redirect({
-        to: "/login",
-      })
+    if (!isAuthenticated()) {
+      // External redirect to dashboard — can't use TanStack redirect for external URLs
+      window.location.href = DASHBOARD_URL
+      // Return a never-resolving promise to prevent rendering during redirect
+      return new Promise(() => {})
     }
   },
 })

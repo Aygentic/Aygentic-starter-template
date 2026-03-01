@@ -1,19 +1,5 @@
-export const randomEmail = () =>
-  `test_${Math.random().toString(36).substring(7)}@example.com`
+export const randomEntityTitle = () =>
+  `Entity ${Math.random().toString(36).substring(7)}`
 
-export const randomTeamName = () =>
-  `Team ${Math.random().toString(36).substring(7)}`
-
-export const randomPassword = () => `${Math.random().toString(36).substring(2)}`
-
-export const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "")
-
-export const randomItemTitle = () =>
-  `Item ${Math.random().toString(36).substring(7)}`
-
-export const randomItemDescription = () =>
+export const randomEntityDescription = () =>
   `Description ${Math.random().toString(36).substring(7)}`

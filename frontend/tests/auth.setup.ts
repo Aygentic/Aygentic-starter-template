@@ -1,13 +1,16 @@
 import { test as setup } from "@playwright/test"
-import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
+import { TEST_TOKEN } from "./config.ts"
 
-const authFile = "playwright/.auth/user.json"
+setup("inject auth token", async ({ page }) => {
+  // Inject token directly into localStorage before any navigation
+  await page.addInitScript((token) => {
+    localStorage.setItem("access_token", token)
+  }, TEST_TOKEN)
 
-setup("authenticate", async ({ page }) => {
-  await page.goto("/login")
-  await page.getByTestId("email-input").fill(firstSuperuser)
-  await page.getByTestId("password-input").fill(firstSuperuserPassword)
-  await page.getByRole("button", { name: "Log In" }).click()
+  // Navigate to app to establish the storage state
+  await page.goto("/")
   await page.waitForURL("/")
-  await page.context().storageState({ path: authFile })
+
+  // Save the authenticated state
+  await page.context().storageState({ path: "playwright/.auth/user.json" })
 })

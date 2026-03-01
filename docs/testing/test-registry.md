@@ -1,9 +1,9 @@
 ---
 title: "Test Registry"
 doc-type: reference
-status: draft
-last-updated: 2026-02-28
-updated-by: "architecture-docs-writer (AYG-71)"
+status: active
+last-updated: 2026-03-01
+updated-by: "AYG-76 frontend cleanup"
 related-code:
   - "backend/tests/**/*.py"
   - "frontend/tests/**/*.spec.ts"
@@ -34,13 +34,9 @@ tags: [testing, quality, registry]
 | backend/models/entity | 14 | 0 | 0 | 14 |
 | backend/services/entity_service | 20 | 0 | 0 | 20 |
 | backend/scripts | 2 | 0 | 0 | 2 |
-| frontend/login | 0 | 0 | 9 | 9 |
-| frontend/admin | 0 | 0 | 12 | 12 |
-| frontend/items | 0 | 0 | 9 | 9 |
-| frontend/user-settings | 0 | 0 | 14 | 14 |
-| frontend/sign-up | 0 | 0 | 11 | 11 |
-| frontend/reset-password | 0 | 0 | 6 | 6 |
-| **Total** | **171** | **89** | **61** | **321** |
+| frontend/entities | 0 | 0 | 6 | 6 |
+| frontend/navigation | 0 | 0 | 5 | 5 |
+| **Total** | **171** | **89** | **11** | **271** |
 
 > Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern in that directory skips DB-dependent fixtures automatically.
 
@@ -411,96 +407,27 @@ tags: [testing, quality, registry]
 | test_init_successful_connection (backend_pre_start) | Verifies backend pre-start DB connection | unit | passing |
 | test_init_successful_connection (test_pre_start) | Verifies test pre-start DB connection | unit | passing |
 
-### Frontend — Login (`frontend/tests/login.spec.ts`)
+### Frontend — Entities (`frontend/tests/entities.spec.ts`)
 
 | Test Name | Description | Type | Status |
 |-----------|-------------|------|--------|
-| Inputs are visible, empty and editable | Validates login form inputs are present | e2e | passing |
-| Log In button is visible | Checks login button renders | e2e | passing |
-| Forgot Password link is visible | Checks password recovery link renders | e2e | passing |
-| Log in with valid email and password | Authenticates with valid credentials | e2e | passing |
-| Log in with invalid email | Shows validation error for invalid email | e2e | passing |
-| Log in with invalid password | Shows error for incorrect password | e2e | passing |
-| Successful log out | Logs in then logs out successfully | e2e | passing |
-| Logged-out user cannot access protected routes | Redirects to login after logout | e2e | passing |
-| Redirects to /login when token is wrong | Handles invalid token in localStorage | e2e | passing |
+| entities page loads and shows correct heading | Validates entities page heading and subtitle | e2e | passing |
+| add entity button is visible | Checks add entity button renders | e2e | passing |
+| create a new entity successfully | Creates entity with title and description | e2e | passing |
+| edit an entity successfully | Creates then edits entity title via actions menu | e2e | passing |
+| delete an entity successfully | Creates then deletes entity via actions menu | e2e | passing |
+| title is required | Shows validation for empty title on submit | e2e | passing |
+| cancel entity creation | Cancels add entity dialog | e2e | passing |
 
-### Frontend — Admin (`frontend/tests/admin.spec.ts`)
+### Frontend — Navigation (`frontend/tests/navigation.spec.ts`)
 
 | Test Name | Description | Type | Status |
 |-----------|-------------|------|--------|
-| Admin page is accessible and shows correct title | Validates admin page heading renders | e2e | passing |
-| Add User button is visible | Checks add user button renders | e2e | passing |
-| Create a new user successfully | Creates user via admin form | e2e | passing |
-| Create a superuser | Creates superuser with admin privileges | e2e | passing |
-| Edit a user successfully | Edits user name via admin actions | e2e | passing |
-| Delete a user successfully | Deletes user via admin actions | e2e | passing |
-| Cancel user creation | Cancels add user dialog | e2e | passing |
-| Email is required and must be valid | Shows validation for invalid email | e2e | passing |
-| Password must be at least 8 characters | Shows validation for weak password | e2e | passing |
-| Passwords must match | Shows mismatch error for passwords | e2e | passing |
-| Non-superuser cannot access admin page | Restricts admin access for normal users | e2e | passing |
-| Superuser can access admin page | Grants admin access for superusers | e2e | passing |
-
-### Frontend — Items (`frontend/tests/items.spec.ts`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| Items page is accessible and shows correct title | Validates items page heading renders | e2e | passing |
-| Add Item button is visible | Checks add item button renders | e2e | passing |
-| Create a new item successfully | Creates item with title and description | e2e | passing |
-| Create item with only required fields | Creates item with title only | e2e | passing |
-| Cancel item creation | Cancels add item dialog | e2e | passing |
-| Title is required | Shows validation for empty title | e2e | passing |
-| Edit an item successfully | Edits item title via actions menu | e2e | passing |
-| Delete an item successfully | Deletes item via actions menu | e2e | passing |
-| Shows empty state message when no items exist | Displays empty state for new user | e2e | passing |
-
-### Frontend — User Settings (`frontend/tests/user-settings.spec.ts`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| My profile tab is active by default | Validates default tab selection | e2e | passing |
-| All tabs are visible | Checks all settings tabs render | e2e | passing |
-| Edit user name with a valid name | Updates user full name | e2e | passing |
-| Edit user email with an invalid email shows error | Shows validation for invalid email | e2e | passing |
-| Edit user email with a valid email | Updates user email address | e2e | passing |
-| Cancel edit action restores original name | Reverts name on cancel | e2e | passing |
-| Cancel edit action restores original email | Reverts email on cancel | e2e | passing |
-| Update password successfully | Changes password and re-authenticates | e2e | passing |
-| Update password with weak passwords | Shows validation for weak password | e2e | passing |
-| New password and confirmation password do not match | Shows password mismatch error | e2e | passing |
-| Current password and new password are the same | Rejects reusing current password | e2e | passing |
-| Appearance button is visible in sidebar | Checks theme toggle renders | e2e | passing |
-| User can switch between theme modes | Toggles dark/light themes | e2e | passing |
-| Selected mode is preserved across sessions | Persists theme across logout/login | e2e | passing |
-
-### Frontend — Sign Up (`frontend/tests/sign-up.spec.ts`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| Inputs are visible, empty and editable | Validates signup form inputs are present | e2e | passing |
-| Sign Up button is visible | Checks signup button renders | e2e | passing |
-| Log In link is visible | Checks login link renders | e2e | passing |
-| Sign up with valid name, email, and password | Registers new user successfully | e2e | passing |
-| Sign up with invalid email | Shows validation for invalid email | e2e | passing |
-| Sign up with existing email | Shows error for duplicate email | e2e | passing |
-| Sign up with weak password | Shows validation for weak password | e2e | passing |
-| Sign up with mismatched passwords | Shows password mismatch error | e2e | passing |
-| Sign up with missing full name | Shows validation for empty name | e2e | passing |
-| Sign up with missing email | Shows validation for empty email | e2e | passing |
-| Sign up with missing password | Shows validation for empty password | e2e | passing |
-
-### Frontend — Reset Password (`frontend/tests/reset-password.spec.ts`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| Password Recovery title is visible | Validates recovery page heading | e2e | passing |
-| Input is visible, empty and editable | Checks email input renders | e2e | passing |
-| Continue button is visible | Checks continue button renders | e2e | passing |
-| User can reset password successfully using the link | Completes full password reset flow | e2e | passing |
-| Expired or invalid reset link | Shows error for invalid reset token | e2e | passing |
-| Weak new password validation | Shows validation for weak new password | e2e | passing |
+| dashboard loads as default route | Validates dashboard heading and welcome text | e2e | passing |
+| sidebar navigation to entities | Clicks Entities link, verifies heading | e2e | passing |
+| sidebar navigation back to dashboard | Navigates from entities back to dashboard | e2e | passing |
+| theme toggle works | Toggles between light and dark mode | e2e | passing |
+| user menu shows sign out option | Opens user menu, verifies Sign Out item | e2e | passing |
 
 ## Coverage Gaps
 
@@ -511,7 +438,7 @@ tags: [testing, quality, registry]
 | backend/utils | No unit tests for email generation and token utilities | - |
 | backend/app/lifespan | No test for startup log event fields (service_name, version, environment) | - |
 | backend/core/http_client | No integration tests against real HTTP server | - |
-| frontend | No unit or integration tests (Playwright E2E only) | - |
+| frontend | No unit or integration tests (Playwright E2E only). Auth is token-injection based. | - |
 
 > `backend/core/config` was previously listed as a gap — now covered by 13 unit tests in `backend/tests/unit/test_config.py`.
 > `backend/core/errors` is a new module introduced in AYG-65 — covered by 20 unit tests in `backend/tests/unit/test_errors.py`.

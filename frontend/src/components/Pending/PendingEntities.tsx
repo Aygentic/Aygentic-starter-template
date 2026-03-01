@@ -8,14 +8,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const PendingUsers = () => (
+const PendingEntities = () => (
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>Full Name</TableHead>
-        <TableHead>Email</TableHead>
-        <TableHead>Role</TableHead>
-        <TableHead>Status</TableHead>
+        <TableHead>ID</TableHead>
+        <TableHead>Title</TableHead>
+        <TableHead>Description</TableHead>
         <TableHead>
           <span className="sr-only">Actions</span>
         </TableHead>
@@ -25,19 +24,13 @@ const PendingUsers = () => (
       {Array.from({ length: 5 }).map((_, index) => (
         <TableRow key={index}>
           <TableCell>
+            <Skeleton className="h-4 w-64 font-mono" />
+          </TableCell>
+          <TableCell>
             <Skeleton className="h-4 w-32" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-40" />
-          </TableCell>
-          <TableCell>
-            <Skeleton className="h-5 w-20 rounded-full" />
-          </TableCell>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              <Skeleton className="size-2 rounded-full" />
-              <Skeleton className="h-4 w-12" />
-            </div>
+            <Skeleton className="h-4 w-48" />
           </TableCell>
           <TableCell>
             <div className="flex justify-end">
@@ -50,4 +43,4 @@ const PendingUsers = () => (
   </Table>
 )
 
-export default PendingUsers
+export default PendingEntities

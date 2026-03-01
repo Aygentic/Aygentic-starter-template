@@ -39,7 +39,6 @@ class Settings(BaseSettings):
     LOG_FORMAT: Literal["json", "console"] = "json"
     API_V1_STR: str = "/api/v1"
     BACKEND_CORS_ORIGINS: Annotated[list[str] | str, BeforeValidator(parse_cors)] = []
-    WITH_UI: bool = False
     CLERK_JWKS_URL: str | None = None
     CLERK_AUTHORIZED_PARTIES: list[str] = []
     GIT_COMMIT: str = "unknown"
