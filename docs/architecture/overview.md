@@ -3,7 +3,7 @@ title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
 last-updated: 2026-03-01
-updated-by: "architecture-docs-writer (AYG-74)"
+updated-by: "architecture-docs-writer (AYG-76)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -46,7 +46,7 @@ tags: [architecture, system-design, full-stack, fastapi, react]
 
 ## Purpose
 
-The Aygentic Starter Template is a full-stack monorepo providing a production-ready foundation for building web applications. It combines a Python/FastAPI REST API backend with a React/TypeScript single-page application frontend, backed by PostgreSQL, and deployed via Docker Compose with Traefik as a reverse proxy. The system delivers JWT-based authentication (transitioning to Clerk as the external identity provider), user management with role-based access control, CRUD operations for domain entities, a unified error handling framework that guarantees consistent JSON error responses across all endpoints, and an auto-generated type-safe API client that bridges backend and frontend.
+The Aygentic Starter Template is a full-stack monorepo providing a production-ready foundation for building microservice web applications. It combines a Python/FastAPI REST API backend with a React/TypeScript single-page application frontend, backed by PostgreSQL, and deployed via Docker Compose with Traefik as a reverse proxy. Authentication is fully delegated to an external dashboard: users authenticate externally and are passed into the microservice via a JWT token in the `?token=` URL parameter. The system delivers Clerk JWT verification, owner-scoped CRUD operations for domain entities via a Supabase service layer, a unified error handling framework that guarantees consistent JSON error responses across all endpoints, and an auto-generated type-safe API client that bridges backend and frontend.
 
 ## System Context
 
@@ -95,14 +95,15 @@ C4Context
 | Service Layer (Entity) | Module-level functions accepting `supabase.Client` as first param; owner-scoped CRUD via Supabase REST table builder; `ServiceError` propagation with `ENTITY_*` codes; no-op update short-circuit when no fields are set | Python, supabase-py, postgrest-py | `backend/app/services/entity_service.py` |
 | CRUD Utilities (Legacy) | Data access functions with timing-attack-safe authentication (being replaced by service layer for new resources) | SQLModel Session, Argon2 dummy hash comparison | `backend/app/crud.py` |
 | Database Migrations | Schema version control and migration management | Alembic | `backend/app/alembic/` |
-| Login Routes | OAuth2 token login, token test, password recovery/reset | FastAPI router | `backend/app/api/routes/login.py` |
-| Users Routes | User CRUD, self-registration (`/signup`), profile management | FastAPI router | `backend/app/api/routes/users.py` |
-| Items Routes | Item CRUD with ownership enforcement (superusers see all) | FastAPI router | `backend/app/api/routes/items.py` |
+| Login Routes (legacy) | OAuth2 token login, token test, password recovery/reset — retained in codebase during Clerk migration but superseded by external dashboard auth | FastAPI router | `backend/app/api/routes/login.py` |
+| Users Routes (legacy) | User CRUD, self-registration (`/signup`), profile management — retained during Clerk migration | FastAPI router | `backend/app/api/routes/users.py` |
+| Items Routes (legacy) | Item CRUD with ownership enforcement — retained during Clerk migration | FastAPI router | `backend/app/api/routes/items.py` |
 | Utils Routes | Health check endpoint, test email sending (superuser only) | FastAPI router | `backend/app/api/routes/utils.py` |
 | Private Routes | Local-only user creation (gated by `ENVIRONMENT=local`) | FastAPI router | `backend/app/api/routes/private.py` |
-| React Frontend | Single-page application with authenticated dashboard UI | React 19.1, TypeScript 5.9, Vite 7.3 (SWC) | `frontend/src/main.tsx` |
-| Frontend Router | File-based routing with layout guards and code splitting | TanStack Router 1.157+ | `frontend/src/routes/` |
-| Server State Management | API data fetching, caching, and global 401/403 error handling | TanStack Query 5.90+ (QueryCache, MutationCache) | `frontend/src/main.tsx` |
+| React Frontend | Minimal SPA with no public auth pages; token received via `?token=` URL param from external dashboard, stored in `localStorage`; on 401/403 redirects to `VITE_DASHBOARD_URL`; sidebar provides Dashboard + Entities navigation only | React 19.1, TypeScript 5.9, Vite 7.3 (SWC) | `frontend/src/main.tsx` |
+| Frontend Router | File-based routing; all routes under `_layout.tsx` auth guard (redirects to `DASHBOARD_URL` if unauthenticated); routes: `/` (dashboard), `/entities` (entity CRUD) | TanStack Router 1.157+ | `frontend/src/routes/` |
+| Server State Management | API data fetching, caching; global 401/403 error handling clears token and redirects to `DASHBOARD_URL` (not `/login`) | TanStack Query 5.90+ (QueryCache, MutationCache) | `frontend/src/main.tsx` |
+| Entities Components | Add, edit, delete dialogs; actions menu; TanStack Table columns definition for entity CRUD UI | React, TanStack Table | `frontend/src/components/Entities/` |
 | Auto-generated API Client | Type-safe HTTP client generated from OpenAPI schema | @hey-api/openapi-ts, Axios 1.13 | `frontend/src/client/` |
 | UI Component Library | Styled component system with dark theme support | Tailwind CSS 4.2, shadcn/ui (new-york variant) | `frontend/src/components/` |
 | Reverse Proxy (Production) | TLS termination via Let's Encrypt, host-based routing, HTTPS redirect | Traefik 3.6 | `compose.yml` (labels) |
@@ -116,34 +117,38 @@ C4Context
 
 ### Authentication Flow
 
+Authentication is fully delegated to an external dashboard. The microservice frontend has no login, signup, or password-recovery pages.
+
 ```mermaid
 sequenceDiagram
+    participant Dashboard as External Dashboard
     participant Browser
     participant Frontend
     participant Backend
-    participant Database
+    participant Clerk as Clerk (JWT issuer)
 
-    Browser->>Frontend: Navigate to /login
-    Frontend->>Backend: POST /api/v1/login/access-token (OAuth2PasswordRequestForm)
-    Backend->>Database: SELECT user WHERE email = form.username
-    alt User exists
-        Database-->>Backend: User record (with hashed_password)
-        Backend->>Backend: verify_password(plain, hashed) via pwdlib
-        Note over Backend: Argon2 primary, Bcrypt fallback<br/>Auto-rehash if algorithm upgraded
-    else User not found
-        Database-->>Backend: None
-        Backend->>Backend: verify_password(plain, DUMMY_HASH) for timing safety
-        Backend-->>Frontend: 400 Incorrect email or password
+    Dashboard->>Browser: Redirect to microservice URL with ?token=<jwt>
+    Browser->>Frontend: Load app — initAuth() runs at startup
+    Frontend->>Frontend: Extract token from URL param via URLSearchParams
+    Frontend->>Frontend: localStorage.setItem("access_token", token)
+    Frontend->>Frontend: window.history.replaceState (strip ?token= from URL)
+    Note over Frontend: isAuthenticated() checks localStorage<br/>_layout.tsx beforeLoad guard redirects<br/>to DASHBOARD_URL if no token present
+
+    Frontend->>Backend: API request (Authorization: Bearer <token>)
+    Backend->>Clerk: Verify JWT via Clerk JWKS
+    Clerk-->>Backend: Verified claims (user_id, roles, org_id)
+    Backend-->>Frontend: 200 response
+
+    alt 401 or 403 response
+        Backend-->>Frontend: 401/403 ApiError
+        Frontend->>Frontend: clearToken() — remove from localStorage
+        Frontend->>Browser: window.location.href = DASHBOARD_URL
+        Note over Frontend: Handled in QueryCache.onError<br/>and MutationCache.onError
     end
-    alt Password verified
-        Backend->>Backend: Check user.is_active
-        Backend->>Backend: create_access_token(user.id, 8-day expiry)
-        Note over Backend: JWT HS256 signed with SECRET_KEY<br/>Payload: {sub: user_id, exp: timestamp}
-        Backend-->>Frontend: { access_token, token_type: "bearer" }
-        Frontend->>Frontend: localStorage.setItem("access_token", token)
-        Frontend-->>Browser: Redirect to dashboard (/)
-    else Password invalid
-        Backend-->>Frontend: 400 Incorrect email or password
+
+    alt Sign out
+        Frontend->>Frontend: clearToken()
+        Frontend->>Browser: window.location.href = DASHBOARD_URL
     end
 ```
 
@@ -159,26 +164,23 @@ sequenceDiagram
     participant Dependencies as FastAPI Deps
     participant Database
 
-    Browser->>Frontend: User action (e.g., view items)
+    Browser->>Frontend: User action (e.g., view entities)
     Frontend->>TanStackQuery: useQuery({ queryKey, queryFn })
     TanStackQuery->>APIClient: Execute queryFn
     Note over APIClient: OpenAPI.TOKEN callback reads<br/>localStorage("access_token")
-    APIClient->>Backend: GET /api/v1/items/ (Authorization: Bearer <token>)
-    Backend->>Dependencies: OAuth2PasswordBearer extracts token
-    Dependencies->>Dependencies: jwt.decode(token, SECRET_KEY, HS256)
-    Dependencies->>Dependencies: Validate TokenPayload(sub=user_id)
-    Dependencies->>Database: session.get(User, token_data.sub)
-    Database-->>Dependencies: User record
-    Dependencies->>Dependencies: Check user.is_active
-    Dependencies-->>Backend: CurrentUser injected
-    Backend->>Database: Query items (superuser=all, regular=owned)
-    Database-->>Backend: Item records
-    Backend-->>APIClient: JSON response (ItemsPublic: {data, count})
+    APIClient->>Backend: GET /api/v1/entities/ (Authorization: Bearer <token>)
+    Backend->>Dependencies: Extract Bearer token from Authorization header
+    Dependencies->>Dependencies: Verify Clerk JWT via JWKS
+    Dependencies->>Dependencies: Extract Principal (user_id, roles, org_id)
+    Dependencies-->>Backend: Principal injected
+    Backend->>Database: Query entities (owner-scoped via Supabase REST)
+    Database-->>Backend: Entity records
+    Backend-->>APIClient: JSON response (EntitiesPublic: {data, count})
     APIClient-->>TanStackQuery: Response data
     TanStackQuery-->>Frontend: Cached data + loading/error state
     Frontend-->>Browser: Rendered UI
 
-    Note over TanStackQuery,Frontend: QueryCache.onError + MutationCache.onError:<br/>On 401/403 ApiError -> clear token, redirect /login
+    Note over TanStackQuery,Frontend: QueryCache.onError + MutationCache.onError:<br/>On 401/403 ApiError -> clear token, redirect to DASHBOARD_URL
 ```
 
 ### Entity CRUD Flow (Service Layer)
@@ -551,24 +553,21 @@ sequenceDiagram
 
 ### Routing Structure (TanStack Router, file-based)
 
+All routes require authentication. There are no public login, signup, or password-recovery routes — those concerns are handled entirely by the external dashboard.
+
 ```
 frontend/src/routes/
   __root.tsx          -- Root layout (wraps all routes)
-  login.tsx           -- /login (public)
-  signup.tsx          -- /signup (public)
-  recover-password.tsx -- /recover-password (public)
-  reset-password.tsx  -- /reset-password (public)
-  _layout.tsx         -- Authenticated layout wrapper (auth guard)
+  _layout.tsx         -- Authenticated layout wrapper (auth guard: redirects to
+                         DASHBOARD_URL if no token in localStorage)
   _layout/
     index.tsx         -- / (dashboard, requires auth)
-    items.tsx         -- /items (items CRUD, requires auth)
-    settings.tsx      -- /settings (user profile, requires auth)
-    admin.tsx         -- /admin (user management, requires auth + superuser)
+    entities.tsx      -- /entities (entity CRUD, requires auth)
 ```
 
 ### State Management
-- **Server state:** TanStack Query with global `QueryClient` configured with `QueryCache` and `MutationCache` error handlers that intercept 401/403 `ApiError` responses to clear the token and redirect to `/login`
-- **Auth state:** `access_token` in `localStorage`, read via `OpenAPI.TOKEN` async callback
+- **Server state:** TanStack Query with global `QueryClient` configured with `QueryCache` and `MutationCache` error handlers that intercept 401/403 `ApiError` responses — calls `clearToken()` then redirects `window.location.href` to `DASHBOARD_URL` (not `/login`)
+- **Auth state:** `access_token` in `localStorage`; populated by `initAuth()` on startup (extracts `?token=` URL param or falls back to `VITE_DEV_TOKEN` in dev); read via `OpenAPI.TOKEN` async callback on every Axios request
 - **Theme:** `ThemeProvider` with dark mode default, persisted to `localStorage` under key `vite-ui-theme`
 - **Notifications:** Sonner toast library with `richColors` and `closeButton` enabled
 
@@ -594,9 +593,9 @@ Key decisions are documented as ADRs in `docs/architecture/decisions/`:
 
 1. **Single-database architecture** -- The system uses a single PostgreSQL 18 instance for all data. This simplifies operations but limits read/write scaling to vertical scaling unless read replicas are introduced.
 
-2. **Stateless JWT with no revocation** -- Access tokens (8-day expiry) cannot be individually revoked once issued. The only mechanism for invalidation is changing the `SECRET_KEY`, which invalidates all tokens simultaneously. Per-session revocation would require a token blacklist or a switch to shorter-lived tokens with refresh tokens.
+2. **Stateless JWT with no revocation** -- Access tokens cannot be individually revoked by the microservice once issued. Revocation is the responsibility of the external identity provider (Clerk). The legacy internal `SECRET_KEY`-based revocation mechanism is retained only while the Clerk migration is in progress.
 
-3. **localStorage token storage** -- JWT tokens are stored in `localStorage`, which is accessible to any JavaScript running on the same origin. This trades security (compared to httpOnly cookies) for simplicity in the SPA architecture. XSS vulnerabilities would expose tokens.
+3. **localStorage token storage** -- JWT tokens are stored in `localStorage`, which is accessible to any JavaScript running on the same origin. This trades security (compared to httpOnly cookies) for simplicity in the SPA architecture. XSS vulnerabilities would expose tokens. The token is injected by the external dashboard via `?token=` URL param and cleaned from the URL immediately after extraction.
 
 4. **Monorepo coupling** -- Backend and frontend share a single repository and Docker Compose deployment. While this simplifies development coordination, it means both must be deployed together and share the same release cadence.
 
@@ -608,7 +607,7 @@ Key decisions are documented as ADRs in `docs/architecture/decisions/`:
 
 8. **Conditional integration test fixtures** -- `backend/tests/conftest.py` guards integration-level fixtures (DB session, test client, auth token helpers) behind a `try/except` import block (`_INTEGRATION_DEPS_AVAILABLE`). This allows unit tests in `backend/tests/unit/` to run in isolation without a database or the full app context. The guard is temporary while integration fixtures are being migrated (AYG-65 through AYG-74).
 
-9. **Auth in transition (legacy + Clerk)** -- The codebase currently contains both legacy internal HS256 JWT authentication (`backend/app/core/security.py`, `backend/app/api/deps.py`) and the new Clerk-oriented `Principal` model (`backend/app/models/auth.py`). Both coexist during the migration; the legacy auth path will be removed once Clerk integration is complete.
+9. **Auth in transition (legacy + Clerk)** -- The codebase currently contains both legacy internal HS256 JWT authentication (`backend/app/core/security.py`, `backend/app/api/deps.py`) and the new Clerk-oriented `Principal` model (`backend/app/models/auth.py`). Both coexist during the migration; the legacy auth path will be removed once Clerk integration is complete. The frontend has been fully migrated: all login, signup, recover-password, reset-password, admin, settings, and items routes and their associated components have been removed. Authentication UI is entirely delegated to the external dashboard.
 
 10. **Middleware ordering sensitivity** -- `RequestPipelineMiddleware` must remain the last `add_middleware()` call in `main.py` to stay outermost. Adding new middleware after it will wrap it, causing security headers and X-Request-ID to be absent on responses short-circuited by the new middleware.
 

@@ -2,10 +2,10 @@
 title: "API Overview"
 doc-type: reference
 status: active
-version: "1.5.0"
+version: "1.6.0"
 base-url: "/api/v1"
-last-updated: 2026-02-28
-updated-by: "api-docs-writer (AYG-71)"
+last-updated: 2026-03-01
+updated-by: "api-docs-writer (AYG-76)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -54,7 +54,7 @@ The API uses Clerk-issued JWT bearer tokens. Clients obtain a token directly fro
 ### Using a Token
 
 ```bash
-curl -X GET "http://localhost:8000/api/v1/users/me" \
+curl -X GET "http://localhost:8000/api/v1/entities/" \
   -H "Authorization: Bearer <clerk_jwt>" \
   -H "Content-Type: application/json"
 ```
@@ -114,8 +114,6 @@ List endpoints return a `PaginatedResponse[T]` envelope and accept `offset` and 
 | `offset` | integer | `0` | — | Number of records to skip |
 | `limit` | integer | `20` | `100` | Maximum records to return per page |
 
-> **Note:** Some existing endpoints still use the legacy `skip` parameter name; these will be renamed to `offset` during the AYG-65 migration cycle. Both names are accepted in the transition period.
-
 `PaginatedResponse[T]` shape:
 
 ```json
@@ -141,18 +139,6 @@ All resource identifiers (`id`, `owner_id`, `user_id`) are version-4 UUIDs:
 
 ```
 550e8400-e29b-41d4-a716-446655440000
-```
-
-## Data Models
-
-### Message
-
-Returned by endpoints that perform an action with no resource to return (e.g. delete, password change).
-
-```json
-{
-  "message": "Item deleted successfully"
-}
 ```
 
 ## Standard Error Responses
@@ -268,6 +254,7 @@ CORS allowed origins are controlled by two configuration values:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.6.0 | 2026-03-01 | AYG-76: Removed stale `skip` migration note (all endpoints use `offset`); removed `Message` data model section (DELETE /entities returns 204 No Content, no body); updated curl example from removed `/users/me` to `/entities/`; marked utils.md as removed |
 | 1.5.0 | 2026-02-28 | AYG-71: Legacy routes (login, users, items, utils, private) removed from router; only /api/v1/entities and root operational endpoints active; unified error shape confirmed applied to all active endpoints |
 | 1.4.0 | 2026-02-28 | AYG-70: Entity CRUD route handlers registered; all five endpoints live |
 | 1.3.0 | 2026-02-28 | AYG-69: Entity resource forward-reference added; service layer complete, routes planned for AYG-70 |

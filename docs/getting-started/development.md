@@ -3,7 +3,7 @@ title: "Development Workflow"
 doc-type: how-to
 status: published
 last-updated: 2026-03-01
-updated-by: "initialise skill"
+updated-by: "infra docs writer (AYG-76)"
 related-code:
   - backend/pyproject.toml
   - frontend/package.json
@@ -372,7 +372,7 @@ uv run pytest tests/ -k "test_create" -v
 
 ### Frontend (Playwright)
 
-E2E tests live in `frontend/tests/`:
+E2E tests live in `frontend/tests/`. Auth is handled by `tests/auth.setup.ts`, which injects a `TEST_TOKEN` into `localStorage` via `page.addInitScript()` — no login form interaction is required. The token defaults to `"test-token-for-e2e"` when `TEST_TOKEN` is unset.
 
 ```bash
 cd frontend
@@ -381,7 +381,7 @@ cd frontend
 bunx playwright test
 
 # Run specific test file
-bunx playwright test tests/auth.spec.ts
+bunx playwright test tests/entities.spec.ts
 
 # Run with UI
 bunx playwright test --ui

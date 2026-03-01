@@ -1,11 +1,11 @@
 ---
 title: "Utils API"
 doc-type: reference
-status: current
-version: "1.0.0"
+status: removed
+version: "1.1.0"
 base-url: "/api/v1"
-last-updated: 2026-02-26
-updated-by: "initialise skill"
+last-updated: 2026-03-01
+updated-by: "api-docs-writer (AYG-76)"
 related-code:
   - backend/app/api/routes/utils.py
   - backend/app/api/deps.py
@@ -18,9 +18,11 @@ tags: [api, rest, utils, health]
 
 # Utils API
 
+> **Removed in AYG-71:** The `/api/v1/utils` router has been removed from the application. The `GET /api/v1/utils/health-check/` endpoint is superseded by the root-level operational endpoints (`/healthz`, `/readyz`, `/version`). This file is retained for historical reference only.
+
 ## Overview
 
-The utils router provides operational and administrative utility endpoints: a public health-check probe for liveness monitoring and a superuser-only endpoint to send a test email. All paths are prefixed with `/api/v1/utils`.
+The utils router provided operational and administrative utility endpoints: a public health-check probe for liveness monitoring and a superuser-only endpoint to send a test email. All paths were prefixed with `/api/v1/utils`.
 
 **Base URL:** `/api/v1/utils`
 **Authentication:** None for health check; Bearer token (JWT HS256) for test email
@@ -122,4 +124,5 @@ curl -X POST "http://localhost:8000/api/v1/utils/test-email/?email_to=admin@exam
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.1.0 | 2026-03-01 | AYG-76: Marked as removed; `/api/v1/utils` router was deleted in AYG-71 |
 | 1.0.0 | 2026-02-25 | Initial release |

@@ -2,7 +2,7 @@
 title: "Setup Guide"
 doc-type: how-to
 status: published
-last-updated: 2026-02-28
+last-updated: 2026-03-01
 updated-by: "infra docs writer"
 related-code:
   - backend/app/core/config.py
@@ -99,6 +99,8 @@ Frontend tests:
 bunx playwright test
 ```
 
+Playwright authenticates via token injection (not a login form). The setup file `tests/auth.setup.ts` calls `page.addInitScript()` to place an `access_token` in `localStorage` before any navigation. The token value is read from the `TEST_TOKEN` environment variable, which defaults to `"test-token-for-e2e"` when unset. No `FIRST_SUPERUSER` credentials are needed for E2E tests.
+
 ## Environment Variables
 
 Configuration is managed through environment variables loaded from the `.env` file. The application settings are **frozen and immutable** after initialization, and sensitive values use `SecretStr` type to prevent accidental logging.
@@ -122,7 +124,6 @@ Configuration is managed through environment variables loaded from the `.env` fi
 | `LOG_FORMAT` | json | Log output format | Values: `json`, `console` |
 | `API_V1_STR` | /api/v1 | API prefix | Used for all API routes |
 | `BACKEND_CORS_ORIGINS` | [] | Allowed CORS origins | Comma-separated or JSON array |
-| `WITH_UI` | false | Include UI endpoints | Boolean: true/false |
 | `CLERK_JWKS_URL` | None | Clerk JWKS endpoint | Auto-configured if not provided |
 | `CLERK_AUTHORIZED_PARTIES` | [] | Authorized JWT audiences | List of allowed parties |
 | `SENTRY_DSN` | None | Sentry error tracking | Optional error reporting URL |
@@ -130,6 +131,13 @@ Configuration is managed through environment variables loaded from the `.env` fi
 | `BUILD_TIME` | unknown | Build timestamp | Automatically set by build system |
 | `HTTP_CLIENT_TIMEOUT` | 30 | HTTP request timeout (seconds) | For external API calls |
 | `HTTP_CLIENT_MAX_RETRIES` | 3 | HTTP request retries | For resilience |
+
+### Frontend Variables
+
+| Variable | Default | Description | Notes |
+|----------|---------|-------------|-------|
+| `VITE_DASHBOARD_URL` | http://localhost:3000 | URL of the dashboard/shell app | Used to redirect unauthenticated users |
+| `VITE_DEV_TOKEN` | (unset) | Dev JWT token for local development | Optional: bypasses dashboard auth locally |
 
 ### Security Notes
 

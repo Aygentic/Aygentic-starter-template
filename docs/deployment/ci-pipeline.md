@@ -3,7 +3,7 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-01
-updated-by: "cleanup: removed upstream workflow docs, fixed CI workflow name"
+updated-by: "infra docs writer (AYG-76)"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
@@ -162,9 +162,12 @@ Path filter (`dorny/paths-filter@v3`) — the `test-playwright` job only runs if
 | `blob-report-1` to `blob-report-4` | `test-playwright` (each shard) | 1 day |
 | `html-report--attempt-N` | `merge-playwright-reports` | 30 days |
 
-### Secrets
+### Secrets & Variables
 
-None required (uses `GITHUB_TOKEN` implicitly).
+| Name | Purpose | Required |
+|------|---------|----------|
+| `TEST_TOKEN` | Auth token injected into `localStorage` by `tests/auth.setup.ts` via `page.addInitScript()`. Defaults to `"test-token-for-e2e"` when unset. No `FIRST_SUPERUSER` credentials needed. | No (has default) |
+| `GITHUB_TOKEN` | Implicit — artifact download and status checks | Yes (auto) |
 
 ---
 
