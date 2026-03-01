@@ -2,8 +2,8 @@
 title: "Development Workflow"
 doc-type: how-to
 status: published
-last-updated: 2026-02-28
-updated-by: "infra docs writer"
+last-updated: 2026-03-01
+updated-by: "initialise skill"
 related-code:
   - backend/pyproject.toml
   - frontend/package.json
@@ -342,9 +342,10 @@ cd frontend && bun run lint && bunx playwright test
 ### Backend (Pytest)
 
 Tests live in `backend/tests/`:
-- `tests/api/` - API endpoint tests
-- `tests/crud/` - Database operation tests
-- `tests/utils/` - Utility function tests
+- `tests/unit/` - Service layer, models, core modules (MagicMock, no DB needed)
+- `tests/integration/` - Route handlers with TestClient + dependency overrides
+- `tests/crud/` - Legacy database operation tests (require DB)
+- `tests/api/routes/` - Legacy API endpoint tests (require DB)
 - `tests/scripts/` - Script tests
 
 ```bash
@@ -353,17 +354,20 @@ cd backend
 # Run all tests
 uv run pytest tests/ -v
 
+# Run unit tests only (no DB required)
+uv run pytest tests/unit/ -v
+
+# Run integration tests only
+uv run pytest tests/integration/ -v
+
 # Run specific test file
-uv run pytest tests/api/test_users.py -v
+uv run pytest tests/unit/test_entity_service.py -v
 
 # Run with coverage
 uv run pytest tests/ --cov=app --cov-report=html
 
 # Run tests matching pattern
 uv run pytest tests/ -k "test_create" -v
-
-# Run with markers
-uv run pytest tests/ -m "unit" -v
 ```
 
 ### Frontend (Playwright)
