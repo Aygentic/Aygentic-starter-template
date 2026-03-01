@@ -14,7 +14,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0.0,<3.0.0",
     "structlog>=24.1.0,<26.0.0",
     "supabase>=2.0.0,<3.0.0",
-    "clerk-backend-api>=1.0.0,<2.0.0",
+    "clerk-backend-api>=5.0.0,<6.0.0",
 ]
 
 [dependency-groups]

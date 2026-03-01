@@ -14,7 +14,10 @@ Run with:
 from unittest.mock import MagicMock, patch
 
 import pytest
-from clerk_backend_api.jwks_helpers import AuthErrorReason, TokenVerificationErrorReason
+from clerk_backend_api.security.types import (
+    AuthErrorReason,
+    TokenVerificationErrorReason,
+)
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
@@ -42,8 +45,7 @@ def _mock_request_state(
 _VALID_PAYLOAD = {
     "sub": "user_123",
     "sid": "sess_456",
-    "org_id": "org_789",
-    "o": {"rol": "admin"},
+    "o": {"id": "org_789", "rol": "admin"},
 }
 
 
@@ -288,8 +290,7 @@ def test_roles_extracted_from_org_metadata(client: TestClient):
     payload_with_roles = {
         "sub": "user_abc",
         "sid": "sess_def",
-        "org_id": "org_xyz",
-        "o": {"rol": "org:admin"},
+        "o": {"id": "org_xyz", "rol": "org:admin"},
     }
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()

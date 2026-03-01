@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 from clerk_backend_api import Clerk
-from clerk_backend_api.jwks_helpers import (
+from clerk_backend_api.security.types import (
     AuthenticateRequestOptions,
     AuthErrorReason,
     TokenVerificationErrorReason,
@@ -123,10 +123,13 @@ async def get_current_principal(request: Request) -> Principal:
             code="AUTH_INVALID_TOKEN",
         )
 
+    org_data = payload.get("o")
+    org_id = org_data.get("id") if isinstance(org_data, dict) else None
+
     principal = Principal(
         user_id=user_id,
         session_id=session_id,
-        org_id=payload.get("org_id"),
+        org_id=org_id,
         roles=_extract_roles(payload),
     )
 
