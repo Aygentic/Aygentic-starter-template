@@ -3,7 +3,7 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-01
-updated-by: "infra docs writer (AYG-73)"
+updated-by: "cleanup: removed upstream workflow docs, fixed CI workflow name"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
@@ -11,11 +11,7 @@ related-code:
   - .github/workflows/deploy-staging.yml
   - .github/workflows/deploy-production.yml
   - .github/workflows/detect-conflicts.yml
-  - .github/workflows/issue-manager.yml
-  - .github/workflows/labeler.yml
-  - .github/workflows/latest-changes.yml
   - .github/workflows/smokeshow.yml
-  - .github/workflows/add-to-project.yml
   - scripts/test.sh
   - scripts/generate-client.sh
 related-docs:
@@ -29,22 +25,22 @@ tags: [ci-cd, pipeline, deployment, automation, github-actions]
 
 ## Pipeline Overview
 
-This project uses GitHub Actions for all CI/CD automation. Eleven workflows cover testing, code quality, deployment, and repository management.
+This project uses GitHub Actions for all CI/CD automation. Seven workflows cover testing, code quality, deployment, and repository management.
 
 ```
 Push / PR
    │
-   ├── pre-commit.yml      ─ Lint, format, type check, generate client
-   ├── test-backend.yml    ─ Pytest (59 tests), coverage >=90%
-   ├── playwright.yml      ─ 61 E2E tests across 4 shards
+   ├── pre-commit.yml          ─ Lint, format, type check, generate client
+   ├── ci.yml                  ─ Pytest + coverage >=90%
+   ├── playwright.yml          ─ E2E tests across 4 shards
+   ├── detect-conflicts.yml    ─ Label PRs with merge conflicts
    │
    └── On merge to main:
-         ├── deploy-staging.yml   ─ Build+push to GHCR, pluggable deploy to staging
-         ├── latest-changes.yml   ─ Update release-notes.md
-         └── smokeshow.yml        ─ Publish coverage HTML report
+         ├── deploy-staging.yml ─ Build+push to GHCR, pluggable deploy to staging
+         └── smokeshow.yml      ─ Publish coverage HTML report
 
 On GitHub Release (published):
-   └── deploy-production.yml ─ Promote GHCR image (SHA→version+latest), pluggable deploy
+   └── deploy-production.yml   ─ Promote GHCR image (SHA→version+latest), pluggable deploy
 ```
 
 ---
@@ -53,23 +49,19 @@ On GitHub Release (published):
 
 | Workflow | File | Trigger(s) | Purpose | Runner |
 |----------|------|------------|---------|--------|
-| Test Backend | `test-backend.yml` | push main, PR (opened/sync) | Run Pytest + coverage | ubuntu-latest |
+| CI | `ci.yml` | push main, PR (opened/sync) | Lint, test, build, coverage >=90% | ubuntu-latest |
 | Playwright Tests | `playwright.yml` | push main, PR (opened/sync), workflow_dispatch | E2E tests (4-shard matrix) | ubuntu-latest |
 | pre-commit | `pre-commit.yml` | PR (opened/sync) | Lint, format, type check, client gen | ubuntu-latest |
 | Deploy to Staging | `deploy-staging.yml` | push main | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
 | Deploy to Production | `deploy-production.yml` | release published | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
 | Conflict Detector | `detect-conflicts.yml` | push, pull_request_target (sync) | Label PRs with merge conflicts | ubuntu-latest |
-| Issue Manager | `issue-manager.yml` | schedule (daily), issue events, PR labels, workflow_dispatch | Auto-close stale issues/PRs | ubuntu-latest |
-| Labels | `labeler.yml` | pull_request_target (opened/sync/reopened/labeled/unlabeled) | Auto-label PRs; enforce required labels | ubuntu-latest |
-| Latest Changes | `latest-changes.yml` | pull_request_target main (closed), workflow_dispatch | Append merged PR to release-notes.md | ubuntu-latest |
-| Smokeshow | `smokeshow.yml` | workflow_run: Test Backend (completed) | Publish coverage HTML as GitHub status | ubuntu-latest |
-| Add to Project | `add-to-project.yml` | pull_request_target, issues (opened/reopened) | Add PRs/issues to GitHub Project board | ubuntu-latest |
+| Smokeshow | `smokeshow.yml` | workflow_run: CI (completed) | Publish coverage HTML as GitHub status | ubuntu-latest |
 
 ---
 
-## Workflow: Test Backend
+## Workflow: CI
 
-**File:** `.github/workflows/test-backend.yml`
+**File:** `.github/workflows/ci.yml`
 
 ### Triggers
 
@@ -82,28 +74,27 @@ On GitHub Release (published):
 
 | Job | Runner | Depends On |
 |-----|--------|------------|
-| `test-backend` | ubuntu-latest | — |
+| `backend-lint` | ubuntu-latest | — |
+| `backend-test` | ubuntu-latest | — |
+| `frontend-ci` | ubuntu-latest | — |
+| `docker-build` | ubuntu-latest | — |
+| `alls-green` | ubuntu-latest | all above |
 
-### Steps
+### Steps (backend-test)
 
 1. Checkout code (`actions/checkout@v6`)
 2. Set up Python 3.10 (`actions/setup-python@v6`)
 3. Install uv (`astral-sh/setup-uv@v7`)
-4. `docker compose down -v --remove-orphans` — clean slate
-5. `docker compose up -d db mailcatcher` — start dependencies only
-6. Run DB migrations: `uv run bash scripts/prestart.sh` (working-dir: `backend/`)
-7. Run tests: `uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"` (working-dir: `backend/`)
+4. Run tests: `uv run pytest` with coverage
    - Tests are located in `backend/tests/unit/` and `backend/tests/integration/`
-   - Legacy test directories (`backend/tests/api/`, `backend/tests/crud/`) fail collection and are pending cleanup (AYG-72)
-8. `docker compose down -v --remove-orphans` — cleanup
-9. Upload `backend/htmlcov` as artifact `coverage-html` (hidden files included)
-10. Enforce coverage: `uv run coverage report --fail-under=90`
+5. Upload `backend/htmlcov` as artifact `coverage-html` (hidden files included)
+6. Enforce coverage: `uv run coverage report --fail-under=90`
 
 ### Artifacts
 
 | Artifact | Produced By | Retention |
 |----------|-------------|-----------|
-| `coverage-html` | `test-backend` job | Default (90 days) |
+| `coverage-html` | `backend-test` job | Default (90 days) |
 
 ### Secrets & Variables
 
@@ -393,82 +384,6 @@ Production deployments are never cancelled mid-flight — a second release queue
 
 ---
 
-## Workflow: Issue Manager
-
-**File:** `.github/workflows/issue-manager.yml`
-
-### Triggers
-
-| Event | Schedule / Conditions |
-|-------|-----------------------|
-| `schedule` | Daily at 17:21 UTC |
-| `issue_comment` | created |
-| `issues` | labeled |
-| `pull_request_target` | labeled |
-| `workflow_dispatch` | Manual |
-
-**Note:** Only runs when `github.repository_owner == 'fastapi'` — not active in forks or your own copy.
-
-### Behavior
-
-Uses `tiangolo/issue-manager@0.6.0` to auto-close items based on label:
-
-| Label | Delay | Action |
-|-------|-------|--------|
-| `answered` | 10 days | Close with message |
-| `waiting` | ~1 month | Close with message (3-day advance reminder) |
-| `invalid` | Immediate | Close with message |
-| `maybe-ai` | Immediate | Close with message (AI-generated content policy) |
-
----
-
-## Workflow: Labels
-
-**File:** `.github/workflows/labeler.yml`
-
-### Triggers
-
-| Event | Conditions |
-|-------|------------|
-| `pull_request_target` | opened, synchronize, reopened, labeled, unlabeled |
-
-### Jobs
-
-| Job | Runner | Depends On | Purpose |
-|-----|--------|------------|---------|
-| `labeler` | ubuntu-latest | — | `actions/labeler@v6` — auto-apply path-based labels |
-| `check-labels` | ubuntu-latest | `labeler` | Enforce one of: `breaking`, `security`, `feature`, `bug`, `refactor`, `upgrade`, `docs`, `lang-all`, `internal` |
-
-PRs missing a required label will fail the `check-labels` step.
-
----
-
-## Workflow: Latest Changes
-
-**File:** `.github/workflows/latest-changes.yml`
-
-### Triggers
-
-| Event | Branches | Conditions |
-|-------|----------|------------|
-| `pull_request_target` | main | closed (merged) |
-| `workflow_dispatch` | Any | PR number input required |
-
-### Jobs
-
-| Job | Runner | Steps |
-|-----|--------|-------|
-| `latest-changes` | ubuntu-latest | Checkout (with `LATEST_CHANGES` token to push to main), then `tiangolo/latest-changes@0.4.1` — appends PR info to `release-notes.md` under `## Latest Changes` header |
-
-### Secrets
-
-| Name | Purpose |
-|------|---------|
-| `LATEST_CHANGES` | Personal access token with push permission to main for auto-committing release notes |
-| `GITHUB_TOKEN` | Read PR data |
-
----
-
 ## Workflow: Smokeshow
 
 **File:** `.github/workflows/smokeshow.yml`
@@ -477,7 +392,7 @@ PRs missing a required label will fail the `check-labels` step.
 
 | Event | Conditions |
 |-------|------------|
-| `workflow_run` | Triggered when `Test Backend` workflow completes |
+| `workflow_run` | Triggered when `CI` workflow completes |
 
 ### Jobs
 
@@ -496,42 +411,14 @@ Sets a GitHub commit status `coverage` with the coverage percentage. Fails if co
 
 ---
 
-## Workflow: Add to Project
-
-**File:** `.github/workflows/add-to-project.yml`
-
-### Triggers
-
-| Event | Conditions |
-|-------|------------|
-| `pull_request_target` | All activity |
-| `issues` | opened, reopened |
-
-### Jobs
-
-| Job | Runner | Steps |
-|-----|--------|-------|
-| `add-to-project` | ubuntu-latest | `actions/add-to-project@v1.0.2` — adds item to GitHub Project board |
-
-**Note:** The project URL is configured for the upstream `fastapi` org project. Update this for your own project board.
-
-### Secrets
-
-| Name | Purpose |
-|------|---------|
-| `PROJECTS_TOKEN` | Personal access token with `project` scope |
-
----
-
 ## Branch → Pipeline Mapping
 
 | Event | Workflows Triggered | Deploy Target |
 |-------|---------------------|---------------|
-| PR opened or updated | pre-commit, Test Backend, Playwright (if paths changed) | None |
-| Push to `main` | Test Backend, Playwright, Deploy Staging, Latest Changes | Staging (GHCR + pluggable deploy) |
+| PR opened or updated | pre-commit, CI, Playwright (if paths changed), Conflict Detector | None |
+| Push to `main` | CI, Playwright, Deploy Staging | Staging (GHCR + pluggable deploy) |
 | GitHub Release published | Deploy Production | Production (GHCR image promotion + pluggable deploy) |
-| `workflow_run: Test Backend` completes | Smokeshow | — (coverage report) |
-| PR opened/closed | Add to Project, Labels, Conflict Detector, Latest Changes | — |
+| `workflow_run: CI` completes | Smokeshow | — (coverage report) |
 
 ---
 
@@ -562,9 +449,7 @@ Configure these in: **GitHub repository → Settings → Secrets and variables �
 | Secret | Used By | Description |
 |--------|---------|-------------|
 | `PRE_COMMIT` | `pre-commit.yml` | PAT with push permission — allows bot to commit auto-fixes |
-| `LATEST_CHANGES` | `latest-changes.yml` | PAT with push permission — allows bot to commit release notes |
 | `SMOKESHOW_AUTH_KEY` | `smokeshow.yml` | Smokeshow.io auth key for hosting coverage reports |
-| `PROJECTS_TOKEN` | `add-to-project.yml` | PAT with `project` scope for GitHub Projects integration |
 
 ---
 
@@ -596,7 +481,6 @@ uv run ruff format
 uv run mypy backend/app
 
 # Backend: tests with coverage
-# Target unit and integration tests (legacy test directories are pending cleanup)
 uv run pytest backend/tests/unit/ backend/tests/integration/ -v --cov=app
 uv run coverage report --fail-under=90
 
@@ -632,9 +516,7 @@ The backend requires these core dependencies (defined in `backend/pyproject.toml
 | `sentry-sdk` | >=2.0.0 | Error tracking |
 | `structlog` | >=24.1.0 | Structured logging |
 | `supabase` | >=2.0.0 | Supabase client library |
-| `clerk-backend-api` | >=1.0.0 | Clerk authentication |
-| `pyjwt` | >=2.8.0 | JWT token handling |
-| `pwdlib` | >=0.3.0 | Password hashing (Argon2, Bcrypt) |
+| `clerk-backend-api` | >=1.0.0,<2.0.0 | Clerk authentication |
 
 **Test Environment Requirements:**
 
@@ -661,6 +543,5 @@ ENVIRONMENT=local                    # Relaxed validation for tests
 | Deploy to production fails | Staging image not found by SHA | Ensure the staging workflow completed successfully before publishing the release |
 | Deploy to production fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-production.yml` |
 | pre-commit fails on fork | No `PRE_COMMIT` secret (expected) | Fork uses `pre-commit-ci/lite-action` fallback — this is normal |
-| Labels check fails | PR missing required label | Add one of: `breaking`, `security`, `feature`, `bug`, `refactor`, `upgrade`, `docs`, `lang-all`, `internal` |
 | Smokeshow fails | Missing `SMOKESHOW_AUTH_KEY` | Register at smokeshow.io and add key to secrets |
 | Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.10 and Bun latest — check your local versions match |
