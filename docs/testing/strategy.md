@@ -3,7 +3,7 @@ title: "Testing Strategy"
 doc-type: reference
 status: active
 last-updated: 2026-03-01
-updated-by: "initialise skill"
+updated-by: "test registry audit"
 related-code:
   - "backend/tests/**/*"
   - "frontend/tests/**/*.spec.ts"
@@ -52,7 +52,7 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 |---------|---------|
 | `bunx playwright test` | Run all E2E tests |
 | `bunx playwright test --ui` | Run tests with UI mode |
-| `bunx playwright test tests/login.spec.ts` | Run single test file |
+| `bunx playwright test tests/entities.spec.ts` | Run single test file |
 | `bun run test` | Run tests from project root |
 
 ## Test File Conventions
@@ -64,7 +64,7 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | Location | Separate `tests/` directory | `backend/tests/unit/test_entity_service.py` |
 | Naming | `test_*.py` | `test_auth.py`, `test_errors.py` |
 | Structure | Function-based with fixtures | `def test_create_entity(client, mock_supabase):` |
-| Subdirs | `unit/`, `integration/`, `crud/` (legacy), `api/routes/` (legacy) | `tests/unit/`, `tests/integration/` |
+| Subdirs | `unit/`, `integration/` | `tests/unit/`, `tests/integration/` |
 
 ### Frontend
 
@@ -81,9 +81,8 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 
 | Type | Pattern | When to Use |
 |------|---------|-------------|
-| Supabase | `MagicMock` with chainable table operations | All new resource tests (unit + integration) |
+| Supabase | `MagicMock` with chainable table operations | All resource tests (unit + integration) |
 | Auth | `app.dependency_overrides[get_current_principal]` | Tests requiring authenticated user |
-| Database (legacy) | pytest fixtures with test DB | Legacy DB-dependent tests (crud/, api/routes/) |
 | HTTP | httpx / `unittest.mock.patch` | External API calls, HttpClient tests |
 | Config | Environment variables set in fixtures before app imports | Settings validation, environment-specific tests |
 | External services | `unittest.mock.patch` | Sentry, Clerk SDK |
@@ -124,15 +123,6 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | `test_principal` | function | `Principal(user_id="user_test123")` for auth |
 | `client` | function | FastAPI TestClient with mocked Supabase + auth overrides |
 | `unauthenticated_client` | function | TestClient with mocked Supabase only (no auth override) |
-
-### Legacy Path (crud + api/routes tests)
-
-| Fixture | Scope | Purpose |
-|---------|-------|---------|
-| `db` | session | Database session with init_db + cleanup |
-| `client` | module | FastAPI TestClient instance |
-| `superuser_token_headers` | module | Auth headers for superuser |
-| `normal_user_token_headers` | module | Auth headers for regular user |
 
 > Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern skips DB-dependent fixtures automatically via `_INTEGRATION_DEPS_AVAILABLE`.
 

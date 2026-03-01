@@ -3,7 +3,7 @@ title: "Test Registry"
 doc-type: reference
 status: active
 last-updated: 2026-03-01
-updated-by: "AYG-76 frontend cleanup"
+updated-by: "test registry audit"
 related-code:
   - "backend/tests/**/*.py"
   - "frontend/tests/**/*.spec.ts"
@@ -18,7 +18,6 @@ tags: [testing, quality, registry]
 
 | Module | Unit | Integration | E2E | Total |
 |--------|------|-------------|-----|-------|
-| backend/api/routes | 0 | 82 | 0 | 82 |
 | backend/app/lifespan | 3 | 0 | 0 | 3 |
 | backend/core/auth | 12 | 0 | 0 | 12 |
 | backend/core/config | 13 | 0 | 0 | 13 |
@@ -27,88 +26,20 @@ tags: [testing, quality, registry]
 | backend/core/logging | 6 | 0 | 0 | 6 |
 | backend/core/middleware | 26 | 0 | 0 | 26 |
 | backend/core/supabase | 4 | 0 | 0 | 4 |
-| backend/crud | 10 | 0 | 0 | 10 |
+| backend/integration/entities | 0 | 18 | 0 | 18 |
 | backend/integration/error_responses | 0 | 7 | 0 | 7 |
+| backend/integration/health | 0 | 17 | 0 | 17 |
 | backend/models/auth | 5 | 0 | 0 | 5 |
 | backend/models/common | 6 | 0 | 0 | 6 |
 | backend/models/entity | 14 | 0 | 0 | 14 |
 | backend/services/entity_service | 20 | 0 | 0 | 20 |
-| backend/scripts | 2 | 0 | 0 | 2 |
-| frontend/entities | 0 | 0 | 6 | 6 |
+| frontend/entities | 0 | 0 | 7 | 7 |
 | frontend/navigation | 0 | 0 | 5 | 5 |
-| **Total** | **171** | **89** | **11** | **271** |
+| **Total** | **159** | **42** | **12** | **213** |
 
 > Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern in that directory skips DB-dependent fixtures automatically.
 
 ## Test Inventory
-
-### Backend — API Routes: Items (`backend/tests/api/routes/test_items.py`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_create_item | Creates item with valid title and description | integration | passing |
-| test_read_item | Retrieves item by ID as superuser | integration | passing |
-| test_read_item_not_found | Returns 404 for non-existent item | integration | passing |
-| test_read_item_not_enough_permissions | Rejects item read without ownership | integration | passing |
-| test_read_items | Lists items with pagination support | integration | passing |
-| test_update_item | Updates item title and description | integration | passing |
-| test_update_item_not_found | Returns 404 when updating non-existent item | integration | passing |
-| test_update_item_not_enough_permissions | Rejects item update without ownership | integration | passing |
-| test_delete_item | Deletes item as superuser | integration | passing |
-| test_delete_item_not_found | Returns 404 when deleting non-existent item | integration | passing |
-| test_delete_item_not_enough_permissions | Rejects item deletion without ownership | integration | passing |
-
-### Backend — API Routes: Login (`backend/tests/api/routes/test_login.py`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_get_access_token | Authenticates superuser with valid credentials | integration | passing |
-| test_get_access_token_incorrect_password | Rejects login with wrong password | integration | passing |
-| test_use_access_token | Validates access token via test-token endpoint | integration | passing |
-| test_recovery_password | Sends password recovery email for existing user | integration | passing |
-| test_recovery_password_user_not_exits | Returns generic message for non-existent email | integration | passing |
-| test_reset_password | Resets password with valid token | integration | passing |
-| test_reset_password_invalid_token | Rejects password reset with invalid token | integration | passing |
-| test_login_with_bcrypt_password_upgrades_to_argon2 | Upgrades bcrypt hash to argon2 on login | integration | passing |
-| test_login_with_argon2_password_keeps_hash | Preserves argon2 hash without re-hashing | integration | passing |
-
-### Backend — API Routes: Users (`backend/tests/api/routes/test_users.py`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_get_users_superuser_me | Returns superuser profile via /me endpoint | integration | passing |
-| test_get_users_normal_user_me | Returns normal user profile via /me endpoint | integration | passing |
-| test_create_user_new_email | Creates user with unique email as superuser | integration | passing |
-| test_get_existing_user_as_superuser | Retrieves user by ID as superuser | integration | passing |
-| test_get_non_existing_user_as_superuser | Returns 404 for non-existent user ID | integration | passing |
-| test_get_existing_user_current_user | Retrieves own profile by ID | integration | passing |
-| test_get_existing_user_permissions_error | Rejects reading other user without superuser role | integration | passing |
-| test_get_non_existing_user_permissions_error | Returns 403 for non-superuser accessing others | integration | passing |
-| test_create_user_existing_username | Rejects duplicate email registration | integration | passing |
-| test_create_user_by_normal_user | Rejects user creation by non-superuser | integration | passing |
-| test_retrieve_users | Lists all users as superuser | integration | passing |
-| test_update_user_me | Updates own name and email | integration | passing |
-| test_update_password_me | Changes own password with valid current password | integration | passing |
-| test_update_password_me_incorrect_password | Rejects password change with wrong current password | integration | passing |
-| test_update_user_me_email_exists | Rejects email update to existing email | integration | passing |
-| test_update_password_me_same_password_error | Rejects changing to same password | integration | passing |
-| test_register_user | Registers new user via signup endpoint | integration | passing |
-| test_register_user_already_exists_error | Rejects signup with existing email | integration | passing |
-| test_update_user | Updates user as superuser | integration | passing |
-| test_update_user_not_exists | Returns 404 when updating non-existent user | integration | passing |
-| test_update_user_email_exists | Rejects updating user email to existing email | integration | passing |
-| test_delete_user_me | Deletes own account as normal user | integration | passing |
-| test_delete_user_me_as_superuser | Rejects self-deletion by superuser | integration | passing |
-| test_delete_user_super_user | Deletes another user as superuser | integration | passing |
-| test_delete_user_not_found | Returns 404 when deleting non-existent user | integration | passing |
-| test_delete_user_current_super_user_error | Rejects superuser deleting themselves by ID | integration | passing |
-| test_delete_user_without_privileges | Rejects deletion by non-superuser | integration | passing |
-
-### Backend — API Routes: Private (`backend/tests/api/routes/test_private.py`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_create_user | Creates user via private API without auth | integration | passing |
 
 ### Backend — Integration: Health (`backend/tests/integration/test_health.py`)
 
@@ -146,7 +77,7 @@ tags: [testing, quality, registry]
 
 > 7 integration tests verifying the full middleware + error handler pipeline end-to-end with the assembled app. Uses `client` (authenticated) and `unauthenticated_client` conftest fixtures.
 
-#### Backend — Integration: Entities (`backend/tests/integration/test_entities.py`)
+### Backend — Integration: Entities (`backend/tests/integration/test_entities.py`)
 
 | Test | Description |
 |------|-------------|
@@ -385,28 +316,6 @@ tags: [testing, quality, registry]
 | test_missing_sub_claim_returns_401 | Missing 'sub' claim in JWT payload returns 401 AUTH_INVALID_TOKEN | unit | passing |
 | test_none_payload_returns_401 | None JWT payload from Clerk SDK returns 401 AUTH_INVALID_TOKEN | unit | passing |
 
-### Backend — CRUD: User (`backend/tests/crud/test_user.py`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_create_user | Creates user and verifies hashed password exists | unit | passing |
-| test_authenticate_user | Authenticates user with correct credentials | unit | passing |
-| test_not_authenticate_user | Rejects authentication with non-existent email | unit | passing |
-| test_check_if_user_is_active | Verifies new user defaults to active | unit | passing |
-| test_check_if_user_is_active_inactive | Creates inactive user and verifies status | unit | passing |
-| test_check_if_user_is_superuser | Creates superuser and verifies flag | unit | passing |
-| test_check_if_user_is_superuser_normal_user | Verifies normal user is not superuser | unit | passing |
-| test_get_user | Retrieves user by ID and compares fields | unit | passing |
-| test_update_user | Updates user password and verifies new hash | unit | passing |
-| test_authenticate_user_with_bcrypt_upgrades_to_argon2 | Upgrades bcrypt password hash to argon2 on auth | unit | passing |
-
-### Backend — Scripts (`backend/tests/scripts/`)
-
-| Test Name | Description | Type | Status |
-|-----------|-------------|------|--------|
-| test_init_successful_connection (backend_pre_start) | Verifies backend pre-start DB connection | unit | passing |
-| test_init_successful_connection (test_pre_start) | Verifies test pre-start DB connection | unit | passing |
-
 ### Frontend — Entities (`frontend/tests/entities.spec.ts`)
 
 | Test Name | Description | Type | Status |
@@ -433,9 +342,6 @@ tags: [testing, quality, registry]
 
 | Module | Gap | Linked Issue |
 |--------|-----|-------------|
-| backend/core/security | No unit tests for password hashing and JWT creation | - |
-| backend/core/db | No unit tests for engine creation and init_db | - |
-| backend/utils | No unit tests for email generation and token utilities | - |
 | backend/app/lifespan | No test for startup log event fields (service_name, version, environment) | - |
 | backend/core/http_client | No integration tests against real HTTP server | - |
 | frontend | No unit or integration tests (Playwright E2E only). Auth is token-injection based. | - |
