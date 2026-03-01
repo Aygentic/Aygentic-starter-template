@@ -97,10 +97,13 @@ async def get_current_principal(request: Request) -> Principal:
     """
     try:
         httpx_request = _convert_request(request)
+        authorized = _get_authorized_parties()
         options = AuthenticateRequestOptions(
-            authorized_parties=_get_authorized_parties(),
+            authorized_parties=authorized or None,
         )
-        request_state = _get_clerk_sdk().authenticate_request(httpx_request, options)
+        request_state = await _get_clerk_sdk().authenticate_request_async(
+            httpx_request, options
+        )
     except Exception as exc:
         raise ServiceError(
             status_code=401,
@@ -124,7 +127,9 @@ async def get_current_principal(request: Request) -> Principal:
         )
 
     org_data = payload.get("o")
-    org_id = org_data.get("id") if isinstance(org_data, dict) else None
+    org_id = payload.get("org_id") or (
+        org_data.get("id") if isinstance(org_data, dict) else None
+    )
 
     principal = Principal(
         user_id=user_id,

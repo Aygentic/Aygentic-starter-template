@@ -11,7 +11,7 @@ Run with:
   uv run pytest backend/tests/unit/test_auth.py -v
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from clerk_backend_api.security.types import (
@@ -99,9 +99,11 @@ def test_valid_jwt_returns_principal(client: TestClient):
     """Valid signed-in state returns a Principal with correct fields."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=_VALID_PAYLOAD,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=_VALID_PAYLOAD,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -125,9 +127,11 @@ def test_missing_authorization_returns_401_auth_missing_token(client: TestClient
     """No Authorization header → 401 with AUTH_MISSING_TOKEN code."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=False,
-            reason=AuthErrorReason.SESSION_TOKEN_MISSING,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=False,
+                reason=AuthErrorReason.SESSION_TOKEN_MISSING,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -147,9 +151,11 @@ def test_expired_jwt_returns_401_auth_expired_token(client: TestClient):
     """Expired JWT → 401 with AUTH_EXPIRED_TOKEN code."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=False,
-            reason=TokenVerificationErrorReason.TOKEN_EXPIRED,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=False,
+                reason=TokenVerificationErrorReason.TOKEN_EXPIRED,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -171,9 +177,11 @@ def test_invalid_signature_returns_401_auth_invalid_token(client: TestClient):
     """Token with bad signature → 401 with AUTH_INVALID_TOKEN code."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=False,
-            reason=TokenVerificationErrorReason.TOKEN_INVALID_SIGNATURE,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=False,
+                reason=TokenVerificationErrorReason.TOKEN_INVALID_SIGNATURE,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -195,9 +203,11 @@ def test_unauthorized_party_returns_401_auth_invalid_token(client: TestClient):
     """Token from an unauthorized party → 401 with AUTH_INVALID_TOKEN code."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=False,
-            reason=TokenVerificationErrorReason.TOKEN_INVALID_AUTHORIZED_PARTIES,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=False,
+                reason=TokenVerificationErrorReason.TOKEN_INVALID_AUTHORIZED_PARTIES,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -219,9 +229,11 @@ def test_user_id_set_on_request_state(client: TestClient):
     """Successful auth sets request.state.user_id to the Clerk user ID."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=_VALID_PAYLOAD,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=_VALID_PAYLOAD,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -243,7 +255,9 @@ def test_clerk_sdk_exception_returns_401(client: TestClient):
     """Unexpected Clerk SDK exception returns 401 AUTH_INVALID_TOKEN."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.side_effect = RuntimeError("SDK boom")
+        mock_sdk.authenticate_request_async = AsyncMock(
+            side_effect=RuntimeError("SDK boom")
+        )
         mock_get_sdk.return_value = mock_sdk
 
         response = client.get(
@@ -265,9 +279,11 @@ def test_unknown_reason_returns_401_auth_invalid_token(client: TestClient):
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
         # Use a reason that isn't in the mapping
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=False,
-            reason=TokenVerificationErrorReason.TOKEN_INVALID,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=False,
+                reason=TokenVerificationErrorReason.TOKEN_INVALID,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -294,9 +310,11 @@ def test_roles_extracted_from_org_metadata(client: TestClient):
     }
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=payload_with_roles,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=payload_with_roles,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -322,9 +340,11 @@ def test_no_org_id_returns_none(client: TestClient):
     }
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=payload_no_org,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=payload_no_org,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -339,7 +359,39 @@ def test_no_org_id_returns_none(client: TestClient):
 
 
 # ---------------------------------------------------------------------------
-# Test 11: Missing sub claim → 401 AUTH_INVALID_TOKEN
+# Test 11: Non-dict "o" value → org_id is None
+# ---------------------------------------------------------------------------
+
+
+def test_non_dict_o_returns_none_org_id(client: TestClient):
+    """When payload['o'] is a non-dict value, org_id is None."""
+    payload_non_dict_o = {
+        "sub": "user_abc",
+        "sid": "sess_def",
+        "o": "unexpected-string-value",
+    }
+    with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
+        mock_sdk = MagicMock()
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=payload_non_dict_o,
+            )
+        )
+        mock_get_sdk.return_value = mock_sdk
+
+        response = client.get(
+            "/protected", headers={"Authorization": "Bearer fake-token"}
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["org_id"] is None
+    assert body["roles"] == []
+
+
+# ---------------------------------------------------------------------------
+# Test 12: Missing sub claim → 401 AUTH_INVALID_TOKEN
 # ---------------------------------------------------------------------------
 
 
@@ -348,9 +400,11 @@ def test_missing_sub_claim_returns_401(client: TestClient):
     payload_no_sub = {"sid": "sess_def"}
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=payload_no_sub,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=payload_no_sub,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
@@ -372,9 +426,11 @@ def test_none_payload_returns_401(client: TestClient):
     """Signed-in state with None payload rejects with 401."""
     with patch("app.core.auth._get_clerk_sdk") as mock_get_sdk:
         mock_sdk = MagicMock()
-        mock_sdk.authenticate_request.return_value = _mock_request_state(
-            is_signed_in=True,
-            payload=None,
+        mock_sdk.authenticate_request_async = AsyncMock(
+            return_value=_mock_request_state(
+                is_signed_in=True,
+                payload=None,
+            )
         )
         mock_get_sdk.return_value = mock_sdk
 
