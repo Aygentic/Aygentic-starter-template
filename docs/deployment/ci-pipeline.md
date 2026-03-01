@@ -11,7 +11,6 @@ related-code:
   - .github/workflows/deploy-staging.yml
   - .github/workflows/deploy-production.yml
   - .github/workflows/detect-conflicts.yml
-  - .github/workflows/smokeshow.yml
   - scripts/test.sh
   - scripts/generate-client.sh
 related-docs:
@@ -25,7 +24,7 @@ tags: [ci-cd, pipeline, deployment, automation, github-actions]
 
 ## Pipeline Overview
 
-This project uses GitHub Actions for all CI/CD automation. Seven workflows cover testing, code quality, deployment, and repository management.
+This project uses GitHub Actions for all CI/CD automation. Six workflows cover testing, code quality, deployment, and repository management.
 
 ```
 Push / PR
@@ -36,8 +35,7 @@ Push / PR
    ├── detect-conflicts.yml    ─ Label PRs with merge conflicts
    │
    └── On merge to main:
-         ├── deploy-staging.yml ─ Build+push to GHCR, pluggable deploy to staging
-         └── smokeshow.yml      ─ Publish coverage HTML report
+         └── deploy-staging.yml ─ Build+push to GHCR, pluggable deploy to staging
 
 On GitHub Release (published):
    └── deploy-production.yml   ─ Promote GHCR image (SHA→version+latest), pluggable deploy
@@ -55,7 +53,6 @@ On GitHub Release (published):
 | Deploy to Staging | `deploy-staging.yml` | push main | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
 | Deploy to Production | `deploy-production.yml` | release published | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
 | Conflict Detector | `detect-conflicts.yml` | push, pull_request_target (sync) | Label PRs with merge conflicts | ubuntu-latest |
-| Smokeshow | `smokeshow.yml` | workflow_run: CI (completed) | Publish coverage HTML as GitHub status | ubuntu-latest |
 
 ---
 
@@ -387,33 +384,6 @@ Production deployments are never cancelled mid-flight — a second release queue
 
 ---
 
-## Workflow: Smokeshow
-
-**File:** `.github/workflows/smokeshow.yml`
-
-### Triggers
-
-| Event | Conditions |
-|-------|------------|
-| `workflow_run` | Triggered when `CI` workflow completes |
-
-### Jobs
-
-| Job | Runner | Steps |
-|-----|--------|-------|
-| `smokeshow` | ubuntu-latest | Checkout, Python 3.13, `pip install smokeshow`, download `coverage-html` artifact from triggering run, `smokeshow upload backend/htmlcov` |
-
-Sets a GitHub commit status `coverage` with the coverage percentage. Fails if coverage < 90%.
-
-### Secrets
-
-| Name | Purpose | Required |
-|------|---------|----------|
-| `SMOKESHOW_AUTH_KEY` | Smokeshow service auth key | Yes |
-| `GITHUB_TOKEN` | Download artifacts, set commit status | Yes (auto) |
-
----
-
 ## Branch → Pipeline Mapping
 
 | Event | Workflows Triggered | Deploy Target |
@@ -421,7 +391,6 @@ Sets a GitHub commit status `coverage` with the coverage percentage. Fails if co
 | PR opened or updated | pre-commit, CI, Playwright (if paths changed), Conflict Detector | None |
 | Push to `main` | CI, Playwright, Deploy Staging | Staging (GHCR + pluggable deploy) |
 | GitHub Release published | Deploy Production | Production (GHCR image promotion + pluggable deploy) |
-| `workflow_run: CI` completes | Smokeshow | — (coverage report) |
 
 ---
 
@@ -452,7 +421,6 @@ Configure these in: **GitHub repository → Settings → Secrets and variables �
 | Secret | Used By | Description |
 |--------|---------|-------------|
 | `PRE_COMMIT` | `pre-commit.yml` | PAT with push permission — allows bot to commit auto-fixes |
-| `SMOKESHOW_AUTH_KEY` | `smokeshow.yml` | Smokeshow.io auth key for hosting coverage reports |
 
 ---
 
@@ -545,5 +513,4 @@ ENVIRONMENT=local                    # Relaxed validation for tests
 | Deploy to production fails | Staging image not found by SHA | Ensure the staging workflow completed successfully before publishing the release |
 | Deploy to production fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-production.yml` |
 | pre-commit fails on fork | No `PRE_COMMIT` secret (expected) | Fork uses `pre-commit-ci/lite-action` fallback — this is normal |
-| Smokeshow fails | Missing `SMOKESHOW_AUTH_KEY` | Register at smokeshow.io and add key to secrets |
 | Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.10 and Bun latest — check your local versions match |
