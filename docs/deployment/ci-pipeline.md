@@ -23,7 +23,7 @@ tags: [ci-cd, pipeline, deployment, automation, github-actions]
 
 ## Pipeline Overview
 
-This project uses GitHub Actions for all CI/CD automation. Five workflows cover testing, code quality, and deployment.
+This project uses GitHub Actions for all CI/CD automation. Eight workflows cover testing, code quality, security scanning, releases, and deployment.
 
 ```
 Push / PR
@@ -50,6 +50,9 @@ On workflow_dispatch (manual):
 | pre-commit | `pre-commit.yml` | PR (opened/sync) | Lint, format, type check, client gen | ubuntu-latest |
 | Deploy to Staging | `deploy-staging.yml` | workflow_dispatch (manual) | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
 | Deploy to Production | `deploy-production.yml` | workflow_dispatch (manual) | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
+| CI Checks (reusable) | `ci-checks.yml` | `workflow_call` | Shared lint, test, build, audit, Docker build | ubuntu-latest |
+| CodeQL | `codeql.yml` | push main, PR (opened/sync) | SAST for Python + JavaScript/TypeScript | ubuntu-latest |
+| Release | `release.yml` | push main | Automated versioning via release-please | ubuntu-latest |
 
 ---
 
