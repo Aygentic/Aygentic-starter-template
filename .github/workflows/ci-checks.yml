@@ -103,7 +103,7 @@ jobs:
         working-directory: backend
       - name: Export requirements and audit
         run: |
-          uv export --format requirements-txt --no-hashes > requirements.txt
+          uv export --format requirements-txt --no-hashes --no-emit-project > requirements.txt
           uv run pip-audit --requirement requirements.txt --strict
         working-directory: backend
 
