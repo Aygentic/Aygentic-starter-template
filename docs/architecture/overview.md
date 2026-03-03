@@ -2,8 +2,8 @@
 title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
-last-updated: 2026-03-01
-updated-by: "architecture-docs-writer (legacy cleanup)"
+last-updated: 2026-03-03
+updated-by: "production hardening (AYG-89)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -347,6 +347,7 @@ Request
 
 | Header | Value | Condition |
 |--------|-------|-----------|
+| Content-Security-Policy | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev` | All responses |
 | X-Content-Type-Options | nosniff | All responses |
 | X-Frame-Options | DENY | All responses |
 | X-XSS-Protection | 0 (disabled, CSP preferred) | All responses |
@@ -481,7 +482,7 @@ Authentication is fully delegated to Clerk as the external identity provider. Th
 ### CORS
 - `BACKEND_CORS_ORIGINS` parsed from comma-separated string or JSON array
 - `FRONTEND_HOST` is always appended to allowed origins
-- Middleware configured with `allow_credentials=True`, wildcard methods and headers
+- Middleware configured with `allow_credentials=True`, restricted methods (`GET`, `POST`, `PATCH`, `DELETE`, `OPTIONS`) and headers (`Authorization`, `Content-Type`, `X-Correlation-ID`)
 
 ## Frontend Architecture
 
@@ -504,6 +505,93 @@ frontend/src/routes/
 - **Auth state:** `access_token` in `localStorage`; populated by `initAuth()` on startup (extracts `?token=` URL param or falls back to `VITE_DEV_TOKEN` in dev); read via `OpenAPI.TOKEN` async callback on every Axios request
 - **Theme:** `ThemeProvider` with dark mode default, persisted to `localStorage` under key `vite-ui-theme`
 - **Notifications:** Sonner toast library with `richColors` and `closeButton` enabled
+
+### Component Organization
+
+```
+frontend/src/
+  components/
+    Common/          Infrastructure components shared across features
+      Appearance.tsx    Theme toggle (dark/light/system)
+      DataTable.tsx     Paginated table (TanStack Table) — used by every data view
+      Logo.tsx          App logo (responsive variant for sidebar)
+    Entities/        Reference CRUD implementation (canonical example)
+      AddEntity.tsx     Create dialog (Zod + RHF + useMutation)
+      EditEntity.tsx    Update dialog
+      DeleteEntity.tsx  Delete confirmation dialog
+      ActionsMenu.tsx   Row actions dropdown
+      Columns.tsx       TanStack Table column definitions
+    Pending/         Loading skeletons for Suspense boundaries
+    Sidebar/         Navigation chrome
+      AppSidebar.tsx    Nav items array — add new routes here
+      Main.tsx          Nav item renderer
+      User.tsx          User avatar + sign out
+    ui/              shadcn/ui primitives — auto-generated, DO NOT EDIT
+    theme-provider.tsx  Theme context (dark mode default, localStorage persistence)
+  hooks/
+    useAuth.ts          Token management (initAuth, getToken, setToken, clearToken)
+    useCustomToast.ts   Success/error toast wrappers (sonner)
+    useCopyToClipboard.ts  Clipboard with auto-reset
+    useMobile.ts        Responsive breakpoint detection (768px)
+  routes/              TanStack Router file-based routes
+  client/              Auto-generated API client — DO NOT EDIT
+```
+
+### How to Add a New Route
+
+1. Create a route file at `frontend/src/routes/_layout/<resource>.tsx`
+2. TanStack Router auto-generates the route tree (`routeTree.gen.ts`) on next dev server restart
+3. Add a navigation item to the `items` array in `frontend/src/components/Sidebar/AppSidebar.tsx`:
+   ```tsx
+   { icon: YourIcon, title: "Resources", path: "/resources" }
+   ```
+4. The `_layout.tsx` auth guard automatically protects the new route
+
+### How to Add a CRUD Form
+
+Follow the `AddEntity.tsx` pattern:
+
+1. **Zod schema** — define validation rules (`z.object({ title: z.string().min(1), ... })`)
+2. **useForm** — `useForm<FormData>({ resolver: zodResolver(schema), mode: "onBlur" })`
+3. **useMutation** — call the auto-generated service function, wire `onSuccess`/`onError`/`onSettled`
+4. **Dialog** — shadcn `Dialog` with controlled `open` state and `FormField` components
+5. **Invalidate queries** — `queryClient.invalidateQueries({ queryKey: ["<resource>"] })` in `onSettled`
+6. **Toast feedback** — `useCustomToast()` for `showSuccessToast`/`showErrorToast`
+
+### How to Consume the API Client
+
+The client is auto-generated from the backend OpenAPI schema. Import service classes from `@/client`:
+
+```tsx
+import { EntitiesService } from "@/client"
+
+// Reads: use useSuspenseQuery (for Suspense boundaries) or useQuery
+const { data } = useSuspenseQuery({
+  queryKey: ["entities"],
+  queryFn: () => EntitiesService.readEntities({ skip: 0, limit: 100 }),
+})
+
+// Writes: use useMutation
+const mutation = useMutation({
+  mutationFn: (data: EntityCreate) =>
+    EntitiesService.createEntity({ requestBody: data }),
+  onSettled: () => queryClient.invalidateQueries({ queryKey: ["entities"] }),
+})
+```
+
+**Query key conventions:** use the resource name as the base key (e.g., `["entities"]` for lists, `["entities", id]` for individual items).
+
+### Frontend Testing Patterns
+
+Tests use **Vitest** + **React Testing Library** with jsdom environment.
+
+- **Hook tests** — `renderHook()` with module mocks (`vi.mock(...)`)
+- **Component tests** — `render()` with `QueryClientProvider` wrapper, mock service modules
+- **Interactions** — `@testing-library/user-event` for realistic user events
+- **Async assertions** — `waitFor()` for mutation/query settlement
+- **Mock patterns** — mock `@/client` services, `@/hooks/useCustomToast`, and `window.matchMedia`
+
+Reference tests: `useAuth.test.ts` (hooks), `theme-provider.test.tsx` (components with context), `AddEntity.test.tsx` (form + mutation + dialog).
 
 ### API Client Generation
 - Generated from the backend's OpenAPI schema at `/api/v1/openapi.json` using `@hey-api/openapi-ts`

@@ -269,6 +269,20 @@ def test_security_header_permissions_policy(client: TestClient):
     assert response.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
 
 
+def test_security_header_content_security_policy(client: TestClient):
+    """Content-Security-Policy header is present on every response."""
+    response = client.get("/ok")
+    csp = response.headers.get("content-security-policy")
+    assert csp is not None
+    assert "default-src 'self'" in csp
+    assert "script-src 'self'" in csp
+    assert "style-src 'self' 'unsafe-inline'" in csp
+    assert "connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev" in csp
+    assert "object-src 'none'" in csp
+    assert "base-uri 'self'" in csp
+    assert "form-action 'self'" in csp
+
+
 def test_hsts_production_only(client_production: TestClient):
     """HSTS header present when ENVIRONMENT=production."""
     response = client_production.get("/ok")

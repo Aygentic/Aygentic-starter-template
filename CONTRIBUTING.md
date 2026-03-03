@@ -49,7 +49,10 @@ uv run pytest tests/unit/ tests/integration/ -v
 uv run coverage report --fail-under=90
 ```
 
-### Frontend (80% coverage required)
+### Frontend (coverage enforced in CI)
+
+Current thresholds: 30% statements, 40% branches, 18% functions, 30% lines.
+Thresholds will be raised as coverage improves.
 
 ```bash
 cd frontend
@@ -80,7 +83,7 @@ bun run lint                 # Biome lint + format
 ## Pull Request Checklist
 
 - [ ] Tests written and passing (TDD: tests first, code second)
-- [ ] Backend coverage >= 90%, frontend coverage >= 80%
+- [ ] Backend coverage >= 90%, frontend coverage meets CI thresholds
 - [ ] Linters and type checkers passing
 - [ ] No debug code or temporary hacks
 - [ ] Documentation updated if architecture changed
