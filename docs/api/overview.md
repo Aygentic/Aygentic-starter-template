@@ -2,10 +2,10 @@
 title: "API Overview"
 doc-type: reference
 status: active
-version: "1.7.0"
+version: "1.8.0"
 base-url: "/api/v1"
-last-updated: 2026-03-01
-updated-by: "api-docs-writer (docs-cleanup)"
+last-updated: 2026-03-03
+updated-by: "api-docs-writer (AYG-89)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -16,6 +16,7 @@ related-code:
   - backend/app/services/entity_service.py
   - backend/app/core/config.py
   - backend/app/core/errors.py
+  - backend/app/core/middleware.py
 related-docs:
   - docs/architecture/overview.md
   - docs/data/models.md
@@ -217,12 +218,83 @@ The `request_id` in every error response is a UUID v4 that is also echoed back i
 
 ## CORS
 
-CORS allowed origins are controlled by two configuration values:
+CORS is enforced by `starlette.middleware.cors.CORSMiddleware` configured in `backend/app/main.py`. Requests that use an unlisted method or include an unlisted header will be rejected by the browser's preflight check (or by the server for non-preflighted requests).
+
+### Allowed Origins
+
+Origins are controlled by two configuration values:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `BACKEND_CORS_ORIGINS` | `[]` | Comma-separated list or JSON array of additional allowed origins |
 | `FRONTEND_HOST` | `http://localhost:5173` | Always appended to the allowed origins list |
+
+CORS is only enabled when at least one origin is configured (`settings.all_cors_origins` is non-empty). If no origins are configured, the middleware is not added and all cross-origin requests will be blocked.
+
+### Allowed Methods
+
+The following HTTP methods are explicitly allowed. All other methods will be refused in CORS preflight responses:
+
+```
+GET  POST  PATCH  DELETE  OPTIONS
+```
+
+### Allowed Headers
+
+The following request headers are explicitly allowed. Any header not in this list will be refused in CORS preflight responses:
+
+| Header | Purpose |
+|--------|---------|
+| `Authorization` | Clerk JWT bearer token |
+| `Content-Type` | Request body media type (always `application/json`) |
+| `X-Correlation-ID` | Optional caller-supplied trace identifier (propagated through logs) |
+
+> **Note for API consumers:** Do not send custom headers outside this list (e.g. `X-Custom-Header`) — the browser will block the request at preflight. Credentials (`credentials: 'include'`) are supported.
+
+## Security Headers
+
+`RequestPipelineMiddleware` (`backend/app/core/middleware.py`) injects the following headers on **every response**, including CORS preflight `OPTIONS` responses. The middleware is registered as the outermost layer so these headers are never omitted regardless of which inner handler produces the response.
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `Content-Security-Policy` | See policy below | Restricts resource loading to prevent XSS and data-injection attacks |
+| `X-Content-Type-Options` | `nosniff` | Prevents browsers from MIME-sniffing a response away from the declared content type |
+| `X-Frame-Options` | `DENY` | Blocks the page from being embedded in any `<iframe>`, mitigating clickjacking |
+| `X-XSS-Protection` | `0` | Disables the legacy XSS auditor (CSP supersedes it; the auditor can introduce vulnerabilities) |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends full `Referer` on same-origin requests; only the origin on cross-origin HTTPS requests; nothing on HTTP downgrade |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Disables access to camera, microphone, and geolocation APIs for all browsing contexts |
+
+> **Production only:** `Strict-Transport-Security: max-age=31536000; includeSubDomains` is additionally set when `ENVIRONMENT=production`. It is omitted in `local` and `staging` environments to avoid accidentally pinning HTTPS on non-TLS development origins.
+
+### Content-Security-Policy
+
+The full CSP applied to every response (10 directives):
+
+```
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self' data:;
+connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev;
+object-src 'none';
+base-uri 'self';
+form-action 'self';
+frame-ancestors 'none'
+```
+
+| Directive | Value | Rationale |
+|-----------|-------|-----------|
+| `default-src` | `'self'` | Blocks all resource types not covered by a more specific directive unless they originate from the same host |
+| `script-src` | `'self'` | Only scripts served from the same origin may execute; no inline scripts, no CDNs |
+| `style-src` | `'self' 'unsafe-inline'` | Same-origin stylesheets plus inline styles (required by Tailwind CSS utility classes) |
+| `img-src` | `'self' data:` | Same-origin images plus inline `data:` URIs (used by UI components) |
+| `font-src` | `'self' data:` | Same-origin fonts plus inline `data:` URIs |
+| `connect-src` | `'self' https://*.supabase.co https://*.clerk.accounts.dev` | Allows `fetch`/`XHR` to the same origin, Supabase, and Clerk auth endpoints |
+| `object-src` | `'none'` | Blocks all plugin content (`<object>`, `<embed>`, Flash) |
+| `base-uri` | `'self'` | Prevents injected `<base>` tags from hijacking relative URLs |
+| `form-action` | `'self'` | Restricts `<form>` submission targets to the same origin |
+| `frame-ancestors` | `'none'` | Equivalent to `X-Frame-Options: DENY`; prevents embedding in any frame |
 
 ## Environment-Specific Behaviour
 
@@ -294,6 +366,7 @@ async def list_entities(request: Request, ...):
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.8.0 | 2026-03-03 | AYG-89: Expanded CORS section with explicit allowed-methods and allowed-headers lists; added Security Headers section documenting all 6 headers emitted by RequestPipelineMiddleware including full CSP directive breakdown |
 | 1.7.0 | 2026-03-01 | Docs cleanup: Removed deprecated endpoint doc files (items, login, users, utils) and stale references to legacy security module |
 | 1.6.0 | 2026-03-01 | AYG-76: Removed stale `skip` migration note (all endpoints use `offset`); removed `Message` data model section (DELETE /entities returns 204 No Content, no body); updated curl example from removed `/users/me` to `/entities/`; marked utils.md as removed |
 | 1.5.0 | 2026-02-28 | AYG-71: Legacy routes (login, users, items, utils, private) removed from router; only /api/v1/entities and root operational endpoints active; unified error shape confirmed applied to all active endpoints |

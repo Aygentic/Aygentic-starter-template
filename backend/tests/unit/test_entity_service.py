@@ -229,7 +229,14 @@ def test_get_entity_not_found_raises_404():
     """
     mock_supabase = make_mock_supabase()
 
-    api_error = APIError({"message": "JSON object requested, multiple (or no) rows returned", "code": "PGRST116", "details": "", "hint": ""})
+    api_error = APIError(
+        {
+            "message": "JSON object requested, multiple (or no) rows returned",
+            "code": "PGRST116",
+            "details": "",
+            "hint": "",
+        }
+    )
     (
         mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.side_effect
     ) = api_error

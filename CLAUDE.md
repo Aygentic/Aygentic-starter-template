@@ -118,7 +118,9 @@ Key references in `docs/`:
 - `@docs/getting-started/development.md` - Daily development workflow
 - `@docs/architecture/overview.md` - System architecture and data flows
 - `@docs/api/overview.md` - API documentation and error handling
+- `@docs/api/error-codes.md` - ServiceError code catalog and naming conventions
 - `@docs/data/models.md` - Data models (models package + legacy)
 - `@docs/testing/strategy.md` - Testing approach and mocking patterns
+- `@docs/getting-started/add-resource.md` - Step-by-step guide to add a new resource
 - `@docs/deployment/environments.md` - Deployment guides
 - `@docs/deployment/ci-pipeline.md` - CI/CD pipeline documentation

@@ -27,6 +27,18 @@ _CORRELATION_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-_.]{1,128}$")
 
 # Security headers applied to every response (PRD Section 4.1.12)
 _SECURITY_HEADERS: dict[str, str] = {
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
+    ),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "0",

@@ -3,7 +3,7 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-03
-updated-by: "infra docs writer"
+updated-by: "infra docs writer (AYG-89)"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
@@ -535,12 +535,22 @@ CodeQL performs static analysis to detect security vulnerabilities (SQL injectio
 
 Dependency auditing runs as part of the CI workflow:
 
-| Tool | Scope | Database |
-|------|-------|----------|
-| `pip-audit` | Backend Python packages | OSV (Open Source Vulnerabilities) |
-| `bun audit` | Frontend npm packages | npm advisory database |
+| Tool | Scope | Database | Failure Mode |
+|------|-------|----------|-------------|
+| `pip-audit` | Backend Python packages | OSV (Open Source Vulnerabilities) | Hard failure |
+| `bun audit` | Frontend npm packages | npm advisory database | Hard failure |
 
-Both tools fail the CI pipeline on known vulnerabilities.
+Both tools are hard failures — a known vulnerability blocks the pipeline and prevents merge. The `frontend-audit` job has no `continue-on-error` flag; any advisory hit fails CI immediately.
+
+**Dependency overrides:** `package.json` pins minimum safe versions for transitive dependencies via the `overrides` field to ensure `bun audit` passes cleanly:
+
+| Package | Override | Vulnerability Resolved |
+|---------|----------|----------------------|
+| `rollup` | `>=4.59.0` | CVE in bundler (indirect dep via Vite) |
+| `tar` | `>=7.5.8` | Path traversal (indirect dep) |
+| `lodash` | `>=4.17.23` | Prototype pollution (indirect dep) |
+
+These overrides ensure the lock file always resolves to patched versions without waiting for upstream packages to update their own dependency ranges.
 
 ### Container Scanning (Trivy)
 
@@ -625,3 +635,4 @@ supabase db push --dry-run
 | Deploy to production fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-production.yml` |
 | pre-commit fails on fork | No `PRE_COMMIT` secret (expected) | Fork uses `pre-commit-ci/lite-action` fallback — this is normal |
 | Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.12 and Bun latest — check your local versions match |
+| `bun audit` fails with known vulnerability | Indirect dependency without override | Add a `overrides` entry to root `package.json` pinning the patched version; run `bun install --frozen-lockfile` and commit updated `bun.lock` |

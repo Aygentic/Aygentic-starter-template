@@ -51,7 +51,10 @@ def test_json_format_produces_valid_json():
 
     buf = io.StringIO()
     structlog.configure(
-        **{**structlog.get_config(), "logger_factory": structlog.PrintLoggerFactory(file=buf)}
+        **{
+            **structlog.get_config(),
+            "logger_factory": structlog.PrintLoggerFactory(file=buf),
+        }
     )
     logger = structlog.get_logger()
     logger.info("test_event", key="value")
@@ -69,7 +72,10 @@ def test_console_format_produces_readable_text():
 
     buf = io.StringIO()
     structlog.configure(
-        **{**structlog.get_config(), "logger_factory": structlog.PrintLoggerFactory(file=buf)}
+        **{
+            **structlog.get_config(),
+            "logger_factory": structlog.PrintLoggerFactory(file=buf),
+        }
     )
     logger = structlog.get_logger()
     logger.info("hello_console")
@@ -94,7 +100,10 @@ def test_base_fields_present_in_json():
 
     buf = io.StringIO()
     structlog.configure(
-        **{**structlog.get_config(), "logger_factory": structlog.PrintLoggerFactory(file=buf)}
+        **{
+            **structlog.get_config(),
+            "logger_factory": structlog.PrintLoggerFactory(file=buf),
+        }
     )
     logger = structlog.get_logger()
     logger.info("test_fields")
@@ -115,7 +124,10 @@ def test_log_level_filtering():
 
     buf = io.StringIO()
     structlog.configure(
-        **{**structlog.get_config(), "logger_factory": structlog.PrintLoggerFactory(file=buf)}
+        **{
+            **structlog.get_config(),
+            "logger_factory": structlog.PrintLoggerFactory(file=buf),
+        }
     )
     logger = structlog.get_logger()
     logger.debug("should_not_appear")

@@ -2,8 +2,8 @@
 title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
-last-updated: 2026-03-01
-updated-by: "architecture-docs-writer (legacy cleanup)"
+last-updated: 2026-03-03
+updated-by: "architecture-docs-writer (production hardening AYG-89)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -29,6 +29,8 @@ related-code:
   - frontend/src/components/
   - compose.yml
   - compose.override.yml
+  - frontend/nginx.conf
+  - frontend/Dockerfile
   - compose.gateway.yml
 related-docs:
   - docs/architecture/decisions/
@@ -74,7 +76,7 @@ C4Context
 | Supabase Client Factory | Factory function `create_supabase_client()` initialises a Supabase Client from URL + service key; `get_supabase()` FastAPI dependency retrieves it from `app.state`; raises ServiceError 503 on initialisation failure or missing state | supabase-py | `backend/app/core/supabase.py` |
 | Error Handling | Unified exception handler framework; `ServiceError` exception, `STATUS_CODE_MAP`, 4 global handlers registered at startup via `register_exception_handlers(app)` | FastAPI exception handlers, Pydantic response models | `backend/app/core/errors.py` |
 | Structured Logging | Configures structlog with JSON (production/CI) or console (local) renderer; injects service metadata (service, version, environment) and request-scoped fields (request_id, correlation_id) via contextvars into every log entry | structlog >=24.1.0 | `backend/app/core/logging.py` |
-| Request Pipeline Middleware | Outermost middleware: generates UUID v4 request_id, propagates X-Correlation-ID (with validation), binds both to structlog contextvars, sets five security headers on all responses, applies HSTS in production only, logs each request at status-appropriate level (2xx=info, 4xx=warning, 5xx=error), always sets X-Request-ID response header | Starlette BaseHTTPMiddleware | `backend/app/core/middleware.py` |
+| Request Pipeline Middleware | Outermost middleware: generates UUID v4 request_id, propagates X-Correlation-ID (with validation), binds both to structlog contextvars, sets six security headers on all responses, applies HSTS in production only, logs each request at status-appropriate level (2xx=info, 4xx=warning, 5xx=error), always sets X-Request-ID response header | Starlette BaseHTTPMiddleware | `backend/app/core/middleware.py` |
 | Configuration | Environment-based settings with validation and secret enforcement | pydantic-settings, `.env` file, computed fields | `backend/app/core/config.py` |
 | Shared Models (Package) | Pure Pydantic response envelopes (`ErrorResponse`, `ValidationErrorResponse`, `PaginatedResponse[T]`) and auth identity model (`Principal`) | Pydantic 2.x | `backend/app/models/` |
 | Service Layer (Entity) | Module-level functions accepting `supabase.Client` as first param; owner-scoped CRUD via Supabase REST table builder; `ServiceError` propagation with `ENTITY_*` codes; no-op update short-circuit when no fields are set | Python, supabase-py, postgrest-py | `backend/app/services/entity_service.py` |
@@ -191,7 +193,7 @@ The application runs as a set of Docker Compose services with two configuration 
 
 **Production** (`compose.yml`):
 - `backend` -- FastAPI server on port 8000, health check at `/healthz`, env-based configuration for Supabase and Clerk
-- `frontend` -- Nginx-served SPA on port 80, built with `VITE_API_URL=https://api.${DOMAIN}` (behind `ui` profile)
+- `frontend` -- Nginx-served SPA on port 8080 (non-root `appuser`), built with `VITE_API_URL=https://api.${DOMAIN}` (behind `ui` profile)
 - Traefik labels route `api.${DOMAIN}` to backend, `dashboard.${DOMAIN}` to frontend, all with HTTPS (Let's Encrypt `certresolver=le`)
 
 **Local Development** (`compose.override.yml` extends `compose.yml`):
@@ -212,7 +214,7 @@ Browser --> :80/:443 (Traefik)
         Host-based routing:
                |
     api.${DOMAIN} --> backend:8000
-    dashboard.${DOMAIN} --> frontend:80
+    dashboard.${DOMAIN} --> frontend:8080
                |
     backend --> Supabase REST (external, HTTPS)
 ```
@@ -347,12 +349,22 @@ Request
 
 | Header | Value | Condition |
 |--------|-------|-----------|
+| Content-Security-Policy | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | All responses |
 | X-Content-Type-Options | nosniff | All responses |
 | X-Frame-Options | DENY | All responses |
 | X-XSS-Protection | 0 (disabled, CSP preferred) | All responses |
 | Referrer-Policy | strict-origin-when-cross-origin | All responses |
 | Permissions-Policy | camera=(), microphone=(), geolocation=() | All responses |
 | Strict-Transport-Security | max-age=31536000; includeSubDomains | Production only |
+
+### Dual CSP Enforcement
+
+Content-Security-Policy is enforced at **two layers** for defense-in-depth:
+
+1. **Backend middleware** (`backend/app/core/middleware.py`) -- `RequestPipelineMiddleware` sets CSP on all API responses (any request that reaches FastAPI, including `/api/*` routes and operational endpoints).
+2. **Nginx** (`frontend/nginx.conf`) -- The frontend container's nginx configuration sets the same CSP policy on all SPA asset responses (HTML, JS, CSS served from `/`).
+
+Both layers apply an identical 9-directive policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. If the policy is updated, it must be changed in **both** locations to maintain consistency.
 
 ### Structured Logging
 
@@ -481,7 +493,7 @@ Authentication is fully delegated to Clerk as the external identity provider. Th
 ### CORS
 - `BACKEND_CORS_ORIGINS` parsed from comma-separated string or JSON array
 - `FRONTEND_HOST` is always appended to allowed origins
-- Middleware configured with `allow_credentials=True`, wildcard methods and headers
+- Middleware configured with `allow_credentials=True`, restricted methods (`GET`, `POST`, `PATCH`, `DELETE`, `OPTIONS`) and headers (`Authorization`, `Content-Type`, `X-Correlation-ID`)
 
 ## Frontend Architecture
 
@@ -504,6 +516,93 @@ frontend/src/routes/
 - **Auth state:** `access_token` in `localStorage`; populated by `initAuth()` on startup (extracts `?token=` URL param or falls back to `VITE_DEV_TOKEN` in dev); read via `OpenAPI.TOKEN` async callback on every Axios request
 - **Theme:** `ThemeProvider` with dark mode default, persisted to `localStorage` under key `vite-ui-theme`
 - **Notifications:** Sonner toast library with `richColors` and `closeButton` enabled
+
+### Component Organization
+
+```
+frontend/src/
+  components/
+    Common/          Infrastructure components shared across features
+      Appearance.tsx    Theme toggle (dark/light/system)
+      DataTable.tsx     Paginated table (TanStack Table) — used by every data view
+      Logo.tsx          App logo (responsive variant for sidebar)
+    Entities/        Reference CRUD implementation (canonical example)
+      AddEntity.tsx     Create dialog (Zod + RHF + useMutation)
+      EditEntity.tsx    Update dialog
+      DeleteEntity.tsx  Delete confirmation dialog
+      ActionsMenu.tsx   Row actions dropdown
+      Columns.tsx       TanStack Table column definitions
+    Pending/         Loading skeletons for Suspense boundaries
+    Sidebar/         Navigation chrome
+      AppSidebar.tsx    Nav items array — add new routes here
+      Main.tsx          Nav item renderer
+      User.tsx          User avatar + sign out
+    ui/              shadcn/ui primitives — auto-generated, DO NOT EDIT
+    theme-provider.tsx  Theme context (dark mode default, localStorage persistence)
+  hooks/
+    useAuth.ts          Token management (initAuth, getToken, setToken, clearToken)
+    useCustomToast.ts   Success/error toast wrappers (sonner)
+    useCopyToClipboard.ts  Clipboard with auto-reset
+    useMobile.ts        Responsive breakpoint detection (768px)
+  routes/              TanStack Router file-based routes
+  client/              Auto-generated API client — DO NOT EDIT
+```
+
+### How to Add a New Route
+
+1. Create a route file at `frontend/src/routes/_layout/<resource>.tsx`
+2. TanStack Router auto-generates the route tree (`routeTree.gen.ts`) on next dev server restart
+3. Add a navigation item to the `items` array in `frontend/src/components/Sidebar/AppSidebar.tsx`:
+   ```tsx
+   { icon: YourIcon, title: "Resources", path: "/resources" }
+   ```
+4. The `_layout.tsx` auth guard automatically protects the new route
+
+### How to Add a CRUD Form
+
+Follow the `AddEntity.tsx` pattern:
+
+1. **Zod schema** — define validation rules (`z.object({ title: z.string().min(1), ... })`)
+2. **useForm** — `useForm<FormData>({ resolver: zodResolver(schema), mode: "onBlur" })`
+3. **useMutation** — call the auto-generated service function, wire `onSuccess`/`onError`/`onSettled`
+4. **Dialog** — shadcn `Dialog` with controlled `open` state and `FormField` components
+5. **Invalidate queries** — `queryClient.invalidateQueries({ queryKey: ["<resource>"] })` in `onSettled`
+6. **Toast feedback** — `useCustomToast()` for `showSuccessToast`/`showErrorToast`
+
+### How to Consume the API Client
+
+The client is auto-generated from the backend OpenAPI schema. Import service classes from `@/client`:
+
+```tsx
+import { EntitiesService } from "@/client"
+
+// Reads: use useSuspenseQuery (for Suspense boundaries) or useQuery
+const { data } = useSuspenseQuery({
+  queryKey: ["entities"],
+  queryFn: () => EntitiesService.readEntities({ skip: 0, limit: 100 }),
+})
+
+// Writes: use useMutation
+const mutation = useMutation({
+  mutationFn: (data: EntityCreate) =>
+    EntitiesService.createEntity({ requestBody: data }),
+  onSettled: () => queryClient.invalidateQueries({ queryKey: ["entities"] }),
+})
+```
+
+**Query key conventions:** use the resource name as the base key (e.g., `["entities"]` for lists, `["entities", id]` for individual items).
+
+### Frontend Testing Patterns
+
+Tests use **Vitest** + **React Testing Library** with jsdom environment.
+
+- **Hook tests** — `renderHook()` with module mocks (`vi.mock(...)`)
+- **Component tests** — `render()` with `QueryClientProvider` wrapper, mock service modules
+- **Interactions** — `@testing-library/user-event` for realistic user events
+- **Async assertions** — `waitFor()` for mutation/query settlement
+- **Mock patterns** — mock `@/client` services, `@/hooks/useCustomToast`, and `window.matchMedia`
+
+Reference tests: `useAuth.test.ts` (hooks), `theme-provider.test.tsx` (components with context), `AddEntity.test.tsx` (form + mutation + dialog).
 
 ### API Client Generation
 - Generated from the backend's OpenAPI schema at `/api/v1/openapi.json` using `@hey-api/openapi-ts`

@@ -166,7 +166,6 @@ jobs:
         working-directory: frontend
       - name: Audit dependencies
         run: bun audit
-        continue-on-error: true
         working-directory: frontend
 
   docker-build:

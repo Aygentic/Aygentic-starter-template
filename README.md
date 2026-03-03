@@ -481,4 +481,3 @@ See `.env.example` for the full variable reference including CI/CD platform secr
 | [docs/deployment/environments.md](docs/deployment/environments.md) | Environment configs, variables, migration guide |
 | [docs/deployment/ci-pipeline.md](docs/deployment/ci-pipeline.md) | All GitHub Actions workflows in detail |
 | [docs/runbooks/incidents.md](docs/runbooks/incidents.md) | Incident response and escalation procedures |
-
