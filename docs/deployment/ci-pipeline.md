@@ -3,14 +3,13 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-03
-updated-by: "deferred review fixes (PR #15 follow-up)"
+updated-by: "chore/fix-github-workflows merge"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
   - .github/workflows/pre-commit.yml
   - .github/workflows/deploy-staging.yml
   - .github/workflows/deploy-production.yml
-  - .github/workflows/detect-conflicts.yml
   - scripts/test.sh
   - scripts/generate-client.sh
 related-docs:
@@ -24,7 +23,7 @@ tags: [ci-cd, pipeline, deployment, automation, github-actions]
 
 ## Pipeline Overview
 
-This project uses GitHub Actions for all CI/CD automation. Six workflows cover testing, code quality, deployment, and repository management.
+This project uses GitHub Actions for all CI/CD automation. Five workflows cover testing, code quality, and deployment.
 
 ```
 Push / PR
@@ -32,7 +31,6 @@ Push / PR
    ├── pre-commit.yml          ─ Lint, format, type check, generate client
    ├── ci.yml                  ─ Pytest + coverage >=90%
    ├── playwright.yml          ─ E2E tests across 4 shards
-   ├── detect-conflicts.yml    ─ Label PRs with merge conflicts
    │
    └── On workflow_dispatch (manual):
          └── deploy-staging.yml ─ Build+push to GHCR, pluggable deploy to staging
@@ -52,7 +50,6 @@ On workflow_dispatch (manual):
 | pre-commit | `pre-commit.yml` | PR (opened/sync) | Lint, format, type check, client gen | ubuntu-latest |
 | Deploy to Staging | `deploy-staging.yml` | workflow_dispatch (manual) | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
 | Deploy to Production | `deploy-production.yml` | workflow_dispatch (manual) | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
-| Conflict Detector | `detect-conflicts.yml` | push, pull_request_target (sync) | Label PRs with merge conflicts | ubuntu-latest |
 
 ---
 
@@ -368,35 +365,11 @@ Production deployments are never cancelled mid-flight — a second release queue
 
 ---
 
-## Workflow: Conflict Detector
-
-**File:** `.github/workflows/detect-conflicts.yml`
-
-### Triggers
-
-| Event | Conditions |
-|-------|------------|
-| `push` | All branches |
-| `pull_request_target` | synchronize |
-
-### Jobs
-
-| Job | Runner | Steps |
-|-----|--------|-------|
-| `main` | ubuntu-latest | `eps1lon/actions-label-merge-conflict@v3` — adds `conflicts` label and posts a comment if a PR has a merge conflict |
-
-### Permissions
-
-- `contents: read`
-- `pull-requests: write`
-
----
-
 ## Branch → Pipeline Mapping
 
 | Event | Workflows Triggered | Deploy Target |
 |-------|---------------------|---------------|
-| PR opened or updated | pre-commit, CI, Playwright (if paths changed), Conflict Detector | None |
+| PR opened or updated | pre-commit, CI, Playwright (if paths changed) | None |
 | Push to `main` | CI, Playwright | None (Deploy Staging is manual `workflow_dispatch`) |
 | Manual workflow_dispatch | Deploy Production | Production (GHCR image promotion + pluggable deploy) |
 
