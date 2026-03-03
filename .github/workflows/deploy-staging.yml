@@ -40,6 +40,10 @@ jobs:
 
       # --- PLUGGABLE DEPLOY STEP ---
       # Uncomment ONE of the following blocks for your platform:
+      #
+      # SECURITY: Pin any GitHub Actions you uncomment to a full commit SHA.
+      # Example: uses: org/action@<full-sha> # v2
+      # Resolve: gh api repos/OWNER/REPO/git/ref/tags/VERSION --jq .object.sha
 
       # --- Railway ---
       # - name: Deploy to Railway

@@ -2,8 +2,8 @@
 title: "CI/CD Pipeline"
 doc-type: reference
 status: published
-last-updated: 2026-03-01
-updated-by: "infra docs writer (AYG-76)"
+last-updated: 2026-03-03
+updated-by: "deferred review fixes (PR #15 follow-up)"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
@@ -34,11 +34,11 @@ Push / PR
    ├── playwright.yml          ─ E2E tests across 4 shards
    ├── detect-conflicts.yml    ─ Label PRs with merge conflicts
    │
-   └── On merge to main:
+   └── On workflow_dispatch (manual):
          └── deploy-staging.yml ─ Build+push to GHCR, pluggable deploy to staging
 
-On GitHub Release (published):
-   └── deploy-production.yml   ─ Promote GHCR image (SHA→version+latest), pluggable deploy
+On workflow_dispatch (manual):
+   └── deploy-production.yml   ─ Promote GHCR image (inputs.sha→version+latest), pluggable deploy
 ```
 
 ---
@@ -50,8 +50,8 @@ On GitHub Release (published):
 | CI | `ci.yml` | push main, PR (opened/sync) | Lint, test, build, coverage >=90% | ubuntu-latest |
 | Playwright Tests | `playwright.yml` | push main, PR (opened/sync), workflow_dispatch | E2E tests (4-shard matrix) | ubuntu-latest |
 | pre-commit | `pre-commit.yml` | PR (opened/sync) | Lint, format, type check, client gen | ubuntu-latest |
-| Deploy to Staging | `deploy-staging.yml` | push main | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
-| Deploy to Production | `deploy-production.yml` | release published | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
+| Deploy to Staging | `deploy-staging.yml` | workflow_dispatch (manual) | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
+| Deploy to Production | `deploy-production.yml` | workflow_dispatch (manual) | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
 | Conflict Detector | `detect-conflicts.yml` | push, pull_request_target (sync) | Label PRs with merge conflicts | ubuntu-latest |
 
 ---
@@ -191,7 +191,7 @@ Checks `PRE_COMMIT` secret availability to differentiate own-repo vs fork:
 
 **Own-repo (has secrets):**
 1. Checkout PR branch head (full history, with `PRE_COMMIT` token)
-2. Setup Bun, Python 3.11, uv (with cache)
+2. Setup Bun, Python 3.12, uv (with cache)
 3. `uv sync --all-packages`
 4. `bun ci`
 5. `uvx prek run --from-ref origin/${GITHUB_BASE_REF} --to-ref HEAD --show-diff-on-failure` (continue-on-error)
@@ -233,7 +233,7 @@ Checks `PRE_COMMIT` secret availability to differentiate own-repo vs fork:
 
 | Event | Branches | Conditions |
 |-------|----------|------------|
-| `push` | main | All files |
+| `workflow_dispatch` | Any | Manual trigger (enable push trigger when deployment target is configured) |
 
 ### Concurrency
 
@@ -242,7 +242,7 @@ group: deploy-staging
 cancel-in-progress: true
 ```
 
-Concurrent staging deploys are cancelled — only the latest push to `main` deploys.
+Concurrent manual staging deploys are cancelled — only the latest dispatch runs.
 
 ### Permissions
 
@@ -299,7 +299,14 @@ Concurrent staging deploys are cancelled — only the latest push to `main` depl
 
 | Event | Conditions |
 |-------|------------|
-| `release` published | Triggered by publishing a GitHub Release |
+| `workflow_dispatch` | Manual trigger with `tag` and `sha` inputs |
+
+**Inputs:**
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `tag` | Yes | Image tag to promote to production (e.g. `v1.2.3`) |
+| `sha` | Yes | Git SHA of the staging image to promote (from staging deploy logs) |
 
 ### Concurrency
 
@@ -327,12 +334,13 @@ Production deployments are never cancelled mid-flight — a second release queue
 
 1. Checkout (`actions/checkout@v6`)
 2. Log in to GHCR (`docker/login-action@v3`) — authenticates using `GITHUB_TOKEN` (automatic)
-3. Promote staging image to production (no rebuild — image promotion only):
-   - Pull `ghcr.io/{repo}/backend:{sha}` (the exact image built and validated on staging)
-   - Re-tag as `ghcr.io/{repo}/backend:{release.tag_name}` (e.g. `v1.2.3`)
+3. Verify staging image exists: `docker manifest inspect ghcr.io/{repo}/backend:{inputs.sha}`
+4. Promote staging image to production (no rebuild — image promotion only):
+   - Pull `ghcr.io/{repo}/backend:{inputs.sha}` (the exact image built and validated on staging)
+   - Re-tag as `ghcr.io/{repo}/backend:{inputs.tag}` (e.g. `v1.2.3`)
    - Re-tag as `ghcr.io/{repo}/backend:latest`
    - Push both new tags to GHCR
-4. Pluggable Deploy — uncomment one platform block in the workflow file:
+5. Pluggable Deploy — uncomment one platform block in the workflow file:
    - **Railway**: `railway up --service` with `RAILWAY_TOKEN`
    - **Alibaba Cloud ACR + ECS**: re-tag to ACR, update ECS service
    - **Google Cloud Run**: `google-github-actions/deploy-cloudrun@v2` with `GCP_SERVICE_NAME`
@@ -389,8 +397,8 @@ Production deployments are never cancelled mid-flight — a second release queue
 | Event | Workflows Triggered | Deploy Target |
 |-------|---------------------|---------------|
 | PR opened or updated | pre-commit, CI, Playwright (if paths changed), Conflict Detector | None |
-| Push to `main` | CI, Playwright, Deploy Staging | Staging (GHCR + pluggable deploy) |
-| GitHub Release published | Deploy Production | Production (GHCR image promotion + pluggable deploy) |
+| Push to `main` | CI, Playwright | None (Deploy Staging is manual `workflow_dispatch`) |
+| Manual workflow_dispatch | Deploy Production | Production (GHCR image promotion + pluggable deploy) |
 
 ---
 
@@ -420,7 +428,7 @@ Configure these in: **GitHub repository → Settings → Secrets and variables �
 
 | Secret | Used By | Description |
 |--------|---------|-------------|
-| `PRE_COMMIT` | `pre-commit.yml` | PAT with push permission — allows bot to commit auto-fixes |
+| `PRE_COMMIT` | `pre-commit.yml` | Fine-Grained PAT: Contents → Read and write (commits trigger CI) |
 
 ---
 
@@ -510,7 +518,7 @@ ENVIRONMENT=local                    # Relaxed validation for tests
 | Playwright shards fail inconsistently | Flaky tests (`--fail-on-flaky-tests`) | Identify flaky test from HTML report artifact; fix race conditions |
 | Deploy to staging fails | GHCR push permission denied | Verify `GITHUB_TOKEN` has `packages: write` permission in the workflow |
 | Deploy to staging fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-staging.yml` |
-| Deploy to production fails | Staging image not found by SHA | Ensure the staging workflow completed successfully before publishing the release |
+| Deploy to production fails | Staging image not found by SHA | Ensure the staging workflow completed and use the correct SHA from staging deploy logs |
 | Deploy to production fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-production.yml` |
 | pre-commit fails on fork | No `PRE_COMMIT` secret (expected) | Fork uses `pre-commit-ci/lite-action` fallback — this is normal |
 | Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.12 and Bun latest — check your local versions match |

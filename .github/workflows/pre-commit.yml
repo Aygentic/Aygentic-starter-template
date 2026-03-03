@@ -25,7 +25,12 @@ jobs:
           ref: ${{ github.head_ref }}
           # And it needs the full history to be able to compute diffs
           fetch-depth: 0
-          # A token other than the default GITHUB_TOKEN is needed to be able to trigger CI
+          # PRE_COMMIT secret: a Fine-Grained Personal Access Token (PAT) with:
+          #   - Repository access: this repository only
+          #   - Permissions: Contents → Read and write
+          # A PAT is needed (not GITHUB_TOKEN) so that commits pushed by this
+          # workflow trigger subsequent CI runs. Push events from GITHUB_TOKEN
+          # do not trigger workflows, to prevent infinite loops.
           token: ${{ secrets.PRE_COMMIT }}
       # pre-commit lite ci needs the default checkout configs to work
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
