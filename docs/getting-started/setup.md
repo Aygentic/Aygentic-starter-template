@@ -229,6 +229,18 @@ These jobs must pass before a PR can merge:
 - **Disable branch deletion** for `main` — prevents accidental deletion
 - **Require linear history** (optional) — enforces squash or rebase merges
 
+## Dependabot Configuration
+
+This template ships with Dependabot enabled (`.github/dependabot.yml`). When creating a new project from this template, decide whether to keep it:
+
+| Action | How |
+|--------|-----|
+| **Disable entirely** | Delete `.github/dependabot.yml` or disable in repo Settings > Code security |
+| **Keep alerts only** | Set `open-pull-requests-limit: 0` for each ecosystem (Python and Docker already do this) |
+| **Keep as-is** | GitHub Actions PRs daily, Bun PRs weekly, Python/Docker alerts only |
+
+For early-stage projects, disabling Dependabot prevents noisy auto-PRs while the codebase is still taking shape. Re-enable when the project stabilizes.
+
 ## Troubleshooting
 
 | Issue | Solution |
