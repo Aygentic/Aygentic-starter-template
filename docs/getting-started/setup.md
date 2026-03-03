@@ -2,7 +2,7 @@
 title: "Setup Guide"
 doc-type: how-to
 status: published
-last-updated: 2026-03-01
+last-updated: 2026-03-03
 updated-by: "infra docs writer"
 related-code:
   - backend/app/core/config.py

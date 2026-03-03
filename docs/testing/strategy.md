@@ -2,13 +2,15 @@
 title: "Testing Strategy"
 doc-type: reference
 status: active
-last-updated: 2026-03-01
-updated-by: "test registry audit"
+last-updated: 2026-03-03
+updated-by: "infra docs writer"
 related-code:
   - "backend/tests/**/*"
   - "frontend/tests/**/*.spec.ts"
+  - "frontend/src/**/__tests__/**"
   - "backend/pyproject.toml"
   - "frontend/playwright.config.ts"
+  - "frontend/vitest.config.ts"
 related-docs:
   - docs/testing/test-registry.md
   - docs/architecture/overview.md
@@ -19,11 +21,13 @@ tags: [testing, strategy, quality]
 
 ## Overview
 
-This project uses a split testing approach: Pytest for backend unit and integration tests, and Playwright for frontend end-to-end tests. The backend prioritizes unit and integration coverage while the frontend currently focuses on E2E workflows.
+This project uses a split testing approach: Pytest for backend unit and integration tests, Vitest for frontend unit tests, and Playwright for frontend end-to-end tests. The backend prioritizes unit and integration coverage; the frontend now has both unit tests (Vitest) and E2E workflows (Playwright).
 
 **Backend Framework:** Pytest <8.0.0
+**Frontend Unit Framework:** Vitest 4 + Testing Library (React)
 **Frontend E2E Framework:** Playwright 1.58.2
 **Coverage Target:** 90% backend source coverage (enforced in CI via `coverage` package)
+**Frontend Coverage Target:** statements:30, branches:40, functions:18, lines:30 (TODO: raise as coverage improves)
 
 ## Testing Pyramid
 
@@ -46,14 +50,21 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | `uv run pytest backend/tests/path/to/test.py` | Run single test file |
 | `uv run coverage report` | View coverage report |
 
-### Frontend
+### Frontend — Unit (Vitest)
 
 | Command | Purpose |
 |---------|---------|
-| `bunx playwright test` | Run all E2E tests |
-| `bunx playwright test --ui` | Run tests with UI mode |
-| `bunx playwright test tests/entities.spec.ts` | Run single test file |
-| `bun run test` | Run tests from project root |
+| `bun run test` | Run all unit tests (Vitest) |
+| `bun run test:watch` | Run unit tests in watch mode |
+| `bun run test:coverage` | Run unit tests with v8 coverage report |
+
+### Frontend — E2E (Playwright)
+
+| Command | Purpose |
+|---------|---------|
+| `bun run test:e2e` | Run all E2E tests |
+| `bun run test:e2e:ui` | Run E2E tests with UI mode |
+| `bunx playwright test tests/entities.spec.ts` | Run single E2E test file |
 
 ## Test File Conventions
 
@@ -66,7 +77,17 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | Structure | Function-based with fixtures | `def test_create_entity(client, mock_supabase):` |
 | Subdirs | `unit/`, `integration/` | `tests/unit/`, `tests/integration/` |
 
-### Frontend
+### Frontend — Unit (Vitest)
+
+| Convention | Pattern | Example |
+|------------|---------|---------|
+| Location | Co-located `__tests__/` directories | `frontend/src/hooks/__tests__/useAuth.test.ts` |
+| Naming | `*.test.ts` / `*.test.tsx` | `useAuth.test.ts`, `theme-provider.test.tsx` |
+| Structure | Vitest `describe`/`it`/`expect` + Testing Library | `it("description", () => { render(<Comp />); expect(...) })` |
+| Setup file | `frontend/src/test/setup.ts` | Imports `@testing-library/jest-dom` matchers |
+| Environment | jsdom | Simulates browser DOM without a real browser |
+
+### Frontend — E2E (Playwright)
 
 | Convention | Pattern | Example |
 |------------|---------|---------|
@@ -87,7 +108,16 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | Config | Environment variables set in fixtures before app imports | Settings validation, environment-specific tests |
 | External services | `unittest.mock.patch` | Sentry, Clerk SDK |
 
-### Frontend
+### Frontend — Unit (Vitest)
+
+| Type | Pattern | When to Use |
+|------|---------|-------------|
+| Module | `vi.mock("module-path")` | Mocking imports (localStorage, hooks, API clients) |
+| Spy | `vi.spyOn(obj, "method")` | Observing calls on existing objects |
+| Browser API | `vi.stubGlobal("navigator", ...)` | Mocking browser globals (Clipboard, navigator, etc.) |
+| Timer | `vi.useFakeTimers()` / `vi.useRealTimers()` | Time-dependent logic |
+
+### Frontend — E2E (Playwright)
 
 | Type | Pattern | When to Use |
 |------|---------|-------------|
@@ -105,7 +135,21 @@ This project uses a split testing approach: Pytest for backend unit and integrat
 | Report | `show_missing = true`, sorted by `-Cover` |
 | HTML | `show_contexts = true` |
 
-### Frontend
+### Frontend Unit (vitest.config.ts)
+
+| Metric | Configuration |
+|--------|---------------|
+| Config file | `frontend/vitest.config.ts` |
+| Provider | v8 |
+| Environment | jsdom |
+| Statements threshold | 30% (TODO: raise as coverage improves) |
+| Branches threshold | 40% (TODO: raise as coverage improves) |
+| Functions threshold | 18% (TODO: raise as coverage improves) |
+| Lines threshold | 30% (TODO: raise as coverage improves) |
+| Excluded from coverage | `src/client/**`, `src/routeTree.gen.ts`, `src/components/ui/**`, `src/main.tsx`, `src/test/**` |
+| Node 25+ compat | `execArgv: ["--no-webstorage"]` applied conditionally |
+
+### Frontend E2E (playwright.config.ts)
 
 | Metric | Configuration |
 |--------|---------------|

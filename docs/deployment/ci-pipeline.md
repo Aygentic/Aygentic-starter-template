@@ -3,13 +3,16 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-03
-updated-by: "chore/fix-github-workflows merge"
+updated-by: "infra docs writer"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
   - .github/workflows/pre-commit.yml
   - .github/workflows/deploy-staging.yml
   - .github/workflows/deploy-production.yml
+  - .github/workflows/ci-checks.yml
+  - .github/workflows/codeql.yml
+  - .github/workflows/release.yml
   - scripts/test.sh
   - scripts/generate-client.sh
 related-docs:

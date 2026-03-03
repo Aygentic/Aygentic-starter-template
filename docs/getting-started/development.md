@@ -2,7 +2,7 @@
 title: "Development Workflow"
 doc-type: how-to
 status: published
-last-updated: 2026-03-01
+last-updated: 2026-03-03
 updated-by: "infra docs writer"
 related-code:
   - backend/pyproject.toml
@@ -81,12 +81,21 @@ bun install      # Install dependencies
 bun run dev      # Start dev server at http://localhost:5173
 ```
 
-**Run tests:**
+**Run unit tests:**
 
 ```bash
 cd frontend
-bunx playwright test        # Run all E2E tests
-bunx playwright test --ui   # Run with interactive UI
+bun run test           # Run all unit tests (Vitest)
+bun run test:watch     # Run unit tests in watch mode
+bun run test:coverage  # Run unit tests with coverage report
+```
+
+**Run E2E tests:**
+
+```bash
+cd frontend
+bun run test:e2e        # Run all E2E tests (Playwright)
+bun run test:e2e:ui     # Run with interactive UI
 bunx playwright test --debug  # Debug mode
 ```
 
@@ -302,7 +311,7 @@ Before pushing, ensure all checks pass:
 
 ```bash
 cd backend && uv run prek run --all-files && bash ../scripts/test.sh
-cd frontend && bun run lint && bunx playwright test
+cd frontend && bun run lint && bun run test && bun run test:e2e
 ```
 
 ## Testing Strategy
@@ -335,21 +344,38 @@ uv run pytest tests/ --cov=app --cov-report=html
 uv run pytest tests/ -k "test_create" -v
 ```
 
-### Frontend (Playwright)
+### Frontend Unit Tests (Vitest)
+
+Unit tests live in `frontend/src/**/__tests__/`. Run without a running server.
+
+```bash
+cd frontend
+
+# Run all unit tests
+bun run test
+
+# Run in watch mode (re-runs on file changes)
+bun run test:watch
+
+# Run with coverage report
+bun run test:coverage
+```
+
+### Frontend E2E Tests (Playwright)
 
 E2E tests live in `frontend/tests/`. Auth is handled by `tests/auth.setup.ts`, which injects a `TEST_TOKEN` into `localStorage` via `page.addInitScript()` — no login form interaction is required. The token defaults to `"test-token-for-e2e"` when `TEST_TOKEN` is unset.
 
 ```bash
 cd frontend
 
-# Run all tests
-bunx playwright test
+# Run all E2E tests
+bun run test:e2e
 
 # Run specific test file
 bunx playwright test tests/entities.spec.ts
 
 # Run with UI
-bunx playwright test --ui
+bun run test:e2e:ui
 
 # Debug mode
 bunx playwright test --debug
