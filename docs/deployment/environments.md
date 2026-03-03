@@ -2,8 +2,8 @@
 title: "Deployment Environments"
 doc-type: reference
 status: published
-last-updated: 2026-03-01
-updated-by: "infra docs writer (AYG-74)"
+last-updated: 2026-03-03
+updated-by: "infra docs writer (AYG-89)"
 related-code:
   - backend/app/core/config.py
   - compose.yml
@@ -37,11 +37,13 @@ This project uses three deployment environments with progressively stricter conf
 ## Architecture
 
 All environments use:
-- **Frontend**: React 19 + TypeScript, served by Nginx, managed by Traefik
+- **Frontend**: React 19 + TypeScript, served by Nginx on port **8080** (internal), managed by Traefik. Runs as non-root `appuser` (UID 1001) for container security. External developer access remains at `http://localhost:5173`.
 - **Backend**: FastAPI + Python 3.12, run by uvicorn, managed by Traefik
 - **Database**: Supabase managed PostgreSQL (all environments)
 - **Authentication**: Clerk for user authentication and JWT verification
 - **Proxy**: Traefik 3.6 for routing and HTTPS/TLS certificates via Let's Encrypt
+
+**Reproducible builds**: The frontend Docker image uses `bun install --frozen-lockfile`, ensuring the lock file is always respected and no unexpected dependency upgrades occur during image builds.
 
 Configuration is managed via environment variables with the following characteristics:
 - **Settings are frozen**: All configuration is immutable after application initialization
@@ -108,8 +110,8 @@ Teams deploying to managed platforms (Railway, Cloud Run, Fly.io) should use the
 | Service | Type | Notes |
 |---------|------|-------|
 | FastAPI | Backend | Python 3.12 with uvicorn |
-| React | Frontend | Vite dev server |
-| Traefik | Reverse Proxy | Routes traffic by domain |
+| React | Frontend | Nginx on port 8080 (internal); exposed on host port 5173 via compose.override.yml. Non-root `appuser` (UID 1001). |
+| Traefik | Reverse Proxy | Routes traffic by domain; loadbalancer targets port 8080 |
 | Clerk | Authentication | External managed service |
 | Supabase | Database | External managed service |
 
@@ -178,7 +180,7 @@ See [Setup Guide](../getting-started/setup.md) for detailed instructions.
 |---------|------|--------|-------|
 | Supabase PostgreSQL | Database | Managed service | Daily backups, auto-scaling |
 | FastAPI | Backend | 2-4 workers | Auto-restarts on failure |
-| React | Frontend | Production build | Served by Nginx, cached |
+| React | Frontend | Production build | Nginx on port 8080 (internal); non-root `appuser`; `server_tokens off`; security headers enabled |
 | Traefik | Reverse Proxy | Let's Encrypt SSL | Auto-renews certs, rate limiting |
 | Clerk | Authentication | Managed service | JWT verification, user management |
 | Sentry | Error Tracking | Enabled | Real-time alerts |
@@ -268,7 +270,7 @@ git push origin main  # Triggers a new staging deploy
 |---------|------|--------|-------|
 | Supabase PostgreSQL | Database | Managed service | Daily backups, point-in-time recovery, replication |
 | FastAPI | Backend | 4+ workers | Auto-restart, health checks |
-| React | Frontend | Production build | Cached, minified, CDN-ready |
+| React | Frontend | Production build | Nginx on port 8080 (internal); non-root `appuser`; `server_tokens off`; security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) |
 | Traefik | Reverse Proxy | Let's Encrypt SSL | Auto-renew, rate limiting, health checks |
 | Clerk | Authentication | Managed service | JWT verification, OAuth providers |
 | Sentry | Error Tracking | Enabled | Real-time alerts, performance monitoring |
@@ -312,6 +314,12 @@ Production includes:
 ### Security
 
 `RequestPipelineMiddleware` automatically adds `Strict-Transport-Security: max-age=31536000; includeSubDomains` header when `ENVIRONMENT=production`. Ensure DNS and subdomains are HTTPS-ready before setting this in production.
+
+**Frontend container security (all environments):**
+- Runs as non-root `appuser` (UID 1001, GID 1001) — no root privileges inside the container
+- Nginx listens on port **8080** (not 80) — ports below 1024 require root; running on 8080 avoids that
+- `server_tokens off` — Nginx version not disclosed in response headers or error pages
+- Security response headers set in `frontend/nginx.conf`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 
 **Production-specific validations:**
 - Wildcard CORS (`*`) is rejected — must specify exact origins

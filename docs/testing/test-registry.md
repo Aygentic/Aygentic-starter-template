@@ -3,10 +3,12 @@ title: "Test Registry"
 doc-type: reference
 status: active
 last-updated: 2026-03-03
-updated-by: "infra docs writer"
+updated-by: "architecture-docs-writer (production hardening AYG-89)"
 related-code:
   - "backend/tests/**/*.py"
   - "frontend/tests/**/*.spec.ts"
+  - "frontend/src/**/__tests__/*.test.ts"
+  - "frontend/src/**/__tests__/*.test.tsx"
 related-docs:
   - docs/testing/strategy.md
 tags: [testing, quality, registry]
@@ -24,7 +26,7 @@ tags: [testing, quality, registry]
 | backend/core/errors | 20 | 0 | 0 | 20 |
 | backend/core/http_client | 30 | 0 | 0 | 30 |
 | backend/core/logging | 6 | 0 | 0 | 6 |
-| backend/core/middleware | 26 | 0 | 0 | 26 |
+| backend/core/middleware | 27 | 0 | 0 | 27 |
 | backend/core/supabase | 4 | 0 | 0 | 4 |
 | backend/integration/entities | 0 | 18 | 0 | 18 |
 | backend/integration/error_responses | 0 | 7 | 0 | 7 |
@@ -39,7 +41,11 @@ tags: [testing, quality, registry]
 | frontend/components/theme-provider | 8 | 0 | 0 | 8 |
 | frontend/hooks/useAuth | 13 | 0 | 0 | 13 |
 | frontend/hooks/useCopyToClipboard | 7 | 0 | 0 | 7 |
-| **Total** | **200** | **42** | **12** | **254** |
+| frontend/hooks/useCustomToast | 2 | 0 | 0 | 2 |
+| frontend/hooks/useMobile | 3 | 0 | 0 | 3 |
+| frontend/components/Common/DataTable | 5 | 0 | 0 | 5 |
+| frontend/components/Entities/AddEntity | 8 | 0 | 0 | 8 |
+| **Total** | **219** | **42** | **12** | **273** |
 
 > Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern in that directory skips DB-dependent fixtures automatically.
 
@@ -76,7 +82,7 @@ tags: [testing, quality, registry]
 | TestUnifiedErrorShape::test_422_returns_unified_error_shape | POST with missing required field returns 422 with details array | integration | passing |
 | TestUnifiedErrorShape::test_500_returns_unified_error_shape | Unhandled server exception returns 500 without internal details | integration | passing |
 | TestErrorResponseMetadata::test_error_response_includes_valid_request_id | request_id in error body is a valid UUID string | integration | passing |
-| TestErrorResponseMetadata::test_error_response_has_security_headers | All five security headers present on error responses | integration | passing |
+| TestErrorResponseMetadata::test_error_response_has_security_headers | All six security headers present on error responses | integration | passing |
 | TestErrorResponseMetadata::test_error_response_has_request_id_header | X-Request-ID response header is present and is a valid UUID | integration | passing |
 
 > 7 integration tests verifying the full middleware + error handler pipeline end-to-end with the assembled app. Uses `client` (authenticated) and `unauthenticated_client` conftest fixtures.
@@ -172,9 +178,10 @@ tags: [testing, quality, registry]
 | test_security_header_x_xss_protection | X-XSS-Protection: 0 (disabled, CSP preferred) on every response | unit | passing |
 | test_security_header_referrer_policy | Referrer-Policy: strict-origin-when-cross-origin on every response | unit | passing |
 | test_security_header_permissions_policy | Permissions-Policy: camera=(), microphone=(), geolocation=() on every response | unit | passing |
+| test_security_header_content_security_policy | Verify CSP header present with all 9 directives | unit | passing |
 | test_hsts_production_only | HSTS header present when ENVIRONMENT=production | unit | passing |
 | test_hsts_absent_non_production | HSTS header absent when ENVIRONMENT=local | unit | passing |
-| test_cors_preflight_gets_security_headers | OPTIONS preflight response includes all five security headers | unit | passing |
+| test_cors_preflight_gets_security_headers | OPTIONS preflight response includes all six security headers | unit | passing |
 | test_cors_preflight_gets_request_id_header | OPTIONS preflight response includes X-Request-ID | unit | passing |
 | test_request_id_header_on_4xx | 404 response has X-Request-ID header | unit | passing |
 | test_request_id_header_on_5xx | 500 response has X-Request-ID header | unit | passing |
@@ -366,13 +373,51 @@ tags: [testing, quality, registry]
 |-----------|-------------|------|--------|
 | (7 tests covering `useCopyToClipboard`) | Unit tests for `useCopyToClipboard` hook | unit | passing |
 
+### Frontend — Unit: useCustomToast Hook (`frontend/src/hooks/__tests__/useCustomToast.test.ts`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| showSuccessToast calls toast.success | Verify showSuccessToast invokes sonner success toast | unit | passing |
+| showErrorToast calls toast.error | Verify showErrorToast invokes sonner error toast | unit | passing |
+
+### Frontend — Unit: useIsMobile Hook (`frontend/src/hooks/__tests__/useMobile.test.ts`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| returns false when window width is >= 768px | Report desktop when viewport above breakpoint | unit | passing |
+| returns true when window width is < 768px | Report mobile when viewport below breakpoint | unit | passing |
+| updates when media query fires a change event | React to media query change events dynamically | unit | passing |
+
+### Frontend — Unit: DataTable (`frontend/src/components/Common/__tests__/DataTable.test.tsx`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| renders column headers from column definitions | Render column headers matching provided definitions | unit | passing |
+| renders rows matching provided data | Render table rows for each data entry | unit | passing |
+| shows 'No results found.' for empty data array | Display empty state message when data is empty | unit | passing |
+| hides pagination when data fits on a single page | Hide pagination controls below page size threshold | unit | passing |
+| shows pagination controls when data exceeds page size | Show pagination when row count exceeds page size | unit | passing |
+
+### Frontend — Unit: AddEntity (`frontend/src/components/Entities/__tests__/AddEntity.test.tsx`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| renders the 'Add Entity' trigger button | Render trigger button for add entity dialog | unit | passing |
+| opens the dialog when the trigger button is clicked | Open dialog on trigger button click | unit | passing |
+| shows title and description fields in the dialog | Display title and description form fields | unit | passing |
+| shows validation error when title is empty | Show validation error for empty title on blur | unit | passing |
+| calls EntitiesService.createEntity with form data | Submit form data to createEntity service function | unit | passing |
+| shows success toast and closes dialog | Display success toast and close dialog on save | unit | passing |
+| calls handleError on mutation failure | Invoke handleError when create mutation fails | unit | passing |
+| invalidates the 'entities' query key on settlement | Invalidate entities query cache after mutation | unit | passing |
+
 ## Coverage Gaps
 
 | Module | Gap | Linked Issue |
 |--------|-----|-------------|
 | backend/app/lifespan | No test for startup log event fields (service_name, version, environment) | - |
 | backend/core/http_client | No integration tests against real HTTP server | - |
-| frontend | Unit tests added for utilities, ThemeProvider, useAuth, useCopyToClipboard. Additional component coverage pending. | - |
+| frontend | Unit tests cover utilities, ThemeProvider, useAuth, useCopyToClipboard, useCustomToast, useIsMobile, DataTable, AddEntity. EditEntity, DeleteEntity, and Sidebar components pending. | - |
 
 > `backend/core/config` was previously listed as a gap — now covered by 13 unit tests in `backend/tests/unit/test_config.py`.
 > `backend/core/errors` is a new module introduced in AYG-65 — covered by 20 unit tests in `backend/tests/unit/test_errors.py`.
@@ -380,6 +425,7 @@ tags: [testing, quality, registry]
 > `backend/models/entity` is a new module introduced in AYG-69 — covered by 14 unit tests in `backend/tests/unit/test_entity_models.py`.
 > `backend/services/entity_service` introduced in AYG-69 is now fully covered by 20 unit tests in `backend/tests/unit/test_entity_service.py` (AYG-70).
 > `backend/core/middleware` test_cookie_header_not_logged (26th test) addresses the security gap of sensitive cookie values leaking into structured logs.
+> `backend/core/middleware` test_security_header_content_security_policy (27th test) verifies the full 9-directive CSP header is set on all responses.
 > `backend/app/lifespan` introduced in AYG-71 — covered by 3 unit tests verifying shutdown ordering (AC-10).
 > `backend/core/auth` introduced in AYG-71 — covered by 12 unit tests in `backend/tests/unit/test_auth.py`.
 > `backend/core/http_client` introduced in AYG-71 — covered by 30 unit tests in `backend/tests/unit/test_http_client.py`.

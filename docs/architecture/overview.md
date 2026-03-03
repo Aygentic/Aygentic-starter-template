@@ -3,7 +3,7 @@ title: "Aygentic Starter Template - Architecture Overview"
 doc-type: reference
 status: active
 last-updated: 2026-03-03
-updated-by: "production hardening (AYG-89)"
+updated-by: "architecture-docs-writer (production hardening AYG-89)"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -29,6 +29,8 @@ related-code:
   - frontend/src/components/
   - compose.yml
   - compose.override.yml
+  - frontend/nginx.conf
+  - frontend/Dockerfile
   - compose.gateway.yml
 related-docs:
   - docs/architecture/decisions/
@@ -74,7 +76,7 @@ C4Context
 | Supabase Client Factory | Factory function `create_supabase_client()` initialises a Supabase Client from URL + service key; `get_supabase()` FastAPI dependency retrieves it from `app.state`; raises ServiceError 503 on initialisation failure or missing state | supabase-py | `backend/app/core/supabase.py` |
 | Error Handling | Unified exception handler framework; `ServiceError` exception, `STATUS_CODE_MAP`, 4 global handlers registered at startup via `register_exception_handlers(app)` | FastAPI exception handlers, Pydantic response models | `backend/app/core/errors.py` |
 | Structured Logging | Configures structlog with JSON (production/CI) or console (local) renderer; injects service metadata (service, version, environment) and request-scoped fields (request_id, correlation_id) via contextvars into every log entry | structlog >=24.1.0 | `backend/app/core/logging.py` |
-| Request Pipeline Middleware | Outermost middleware: generates UUID v4 request_id, propagates X-Correlation-ID (with validation), binds both to structlog contextvars, sets five security headers on all responses, applies HSTS in production only, logs each request at status-appropriate level (2xx=info, 4xx=warning, 5xx=error), always sets X-Request-ID response header | Starlette BaseHTTPMiddleware | `backend/app/core/middleware.py` |
+| Request Pipeline Middleware | Outermost middleware: generates UUID v4 request_id, propagates X-Correlation-ID (with validation), binds both to structlog contextvars, sets six security headers on all responses, applies HSTS in production only, logs each request at status-appropriate level (2xx=info, 4xx=warning, 5xx=error), always sets X-Request-ID response header | Starlette BaseHTTPMiddleware | `backend/app/core/middleware.py` |
 | Configuration | Environment-based settings with validation and secret enforcement | pydantic-settings, `.env` file, computed fields | `backend/app/core/config.py` |
 | Shared Models (Package) | Pure Pydantic response envelopes (`ErrorResponse`, `ValidationErrorResponse`, `PaginatedResponse[T]`) and auth identity model (`Principal`) | Pydantic 2.x | `backend/app/models/` |
 | Service Layer (Entity) | Module-level functions accepting `supabase.Client` as first param; owner-scoped CRUD via Supabase REST table builder; `ServiceError` propagation with `ENTITY_*` codes; no-op update short-circuit when no fields are set | Python, supabase-py, postgrest-py | `backend/app/services/entity_service.py` |
@@ -191,7 +193,7 @@ The application runs as a set of Docker Compose services with two configuration 
 
 **Production** (`compose.yml`):
 - `backend` -- FastAPI server on port 8000, health check at `/healthz`, env-based configuration for Supabase and Clerk
-- `frontend` -- Nginx-served SPA on port 80, built with `VITE_API_URL=https://api.${DOMAIN}` (behind `ui` profile)
+- `frontend` -- Nginx-served SPA on port 8080 (non-root `appuser`), built with `VITE_API_URL=https://api.${DOMAIN}` (behind `ui` profile)
 - Traefik labels route `api.${DOMAIN}` to backend, `dashboard.${DOMAIN}` to frontend, all with HTTPS (Let's Encrypt `certresolver=le`)
 
 **Local Development** (`compose.override.yml` extends `compose.yml`):
@@ -212,7 +214,7 @@ Browser --> :80/:443 (Traefik)
         Host-based routing:
                |
     api.${DOMAIN} --> backend:8000
-    dashboard.${DOMAIN} --> frontend:80
+    dashboard.${DOMAIN} --> frontend:8080
                |
     backend --> Supabase REST (external, HTTPS)
 ```
@@ -347,13 +349,22 @@ Request
 
 | Header | Value | Condition |
 |--------|-------|-----------|
-| Content-Security-Policy | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev` | All responses |
+| Content-Security-Policy | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | All responses |
 | X-Content-Type-Options | nosniff | All responses |
 | X-Frame-Options | DENY | All responses |
 | X-XSS-Protection | 0 (disabled, CSP preferred) | All responses |
 | Referrer-Policy | strict-origin-when-cross-origin | All responses |
 | Permissions-Policy | camera=(), microphone=(), geolocation=() | All responses |
 | Strict-Transport-Security | max-age=31536000; includeSubDomains | Production only |
+
+### Dual CSP Enforcement
+
+Content-Security-Policy is enforced at **two layers** for defense-in-depth:
+
+1. **Backend middleware** (`backend/app/core/middleware.py`) -- `RequestPipelineMiddleware` sets CSP on all API responses (any request that reaches FastAPI, including `/api/*` routes and operational endpoints).
+2. **Nginx** (`frontend/nginx.conf`) -- The frontend container's nginx configuration sets the same CSP policy on all SPA asset responses (HTML, JS, CSS served from `/`).
+
+Both layers apply an identical 9-directive policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. If the policy is updated, it must be changed in **both** locations to maintain consistency.
 
 ### Structured Logging
 
