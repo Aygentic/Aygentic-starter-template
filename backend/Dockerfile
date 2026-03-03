@@ -2,7 +2,7 @@
 # Stage 1: Builder
 # Install dependencies and compile bytecode in an isolated env.
 # ============================================================
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Install uv
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
@@ -44,7 +44,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Stage 2: Runtime
 # Minimal image — only the venv and app source, no build tools.
 # ============================================================
-FROM python:3.10-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 # OCI standard metadata for GHCR
 LABEL org.opencontainers.image.source="https://github.com/Aygentic/Aygentic-starter-template"

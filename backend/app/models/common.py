@@ -4,11 +4,7 @@ These are pure Pydantic models (not SQLModel ORM tables). They define
 standard response envelopes reused across all API routes.
 """
 
-from typing import Generic, TypeVar
-
 from pydantic import BaseModel
-
-T = TypeVar("T")
 
 
 class ErrorResponse(BaseModel):
@@ -51,7 +47,7 @@ class ValidationErrorResponse(ErrorResponse):
     """List of individual field validation errors."""
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Generic paginated list response envelope.
 
     Usage::

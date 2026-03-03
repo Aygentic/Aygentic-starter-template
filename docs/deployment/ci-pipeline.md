@@ -80,7 +80,7 @@ On GitHub Release (published):
 ### Steps (backend-test)
 
 1. Checkout code (`actions/checkout@v6`)
-2. Set up Python 3.10 (`actions/setup-python@v6`)
+2. Set up Python 3.12 (`actions/setup-python@v6`)
 3. Install uv (`astral-sh/setup-uv@v7`)
 4. Run tests: `uv run pytest` with coverage
    - Tests are located in `backend/tests/unit/` and `backend/tests/integration/`
@@ -133,7 +133,7 @@ Path filter (`dorny/paths-filter@v3`) — the `test-playwright` job only runs if
 
 1. Checkout (`actions/checkout@v6`)
 2. Setup Bun (`oven-sh/setup-bun@v2`)
-3. Setup Python 3.10 (`actions/setup-python@v6`)
+3. Setup Python 3.12 (`actions/setup-python@v6`)
 4. Optional tmate debug session (if `workflow_dispatch` with `debug_enabled=true`)
 5. Install uv (`astral-sh/setup-uv@v7`)
 6. `uv sync` (backend)
@@ -513,4 +513,4 @@ ENVIRONMENT=local                    # Relaxed validation for tests
 | Deploy to production fails | Staging image not found by SHA | Ensure the staging workflow completed successfully before publishing the release |
 | Deploy to production fails | Pluggable deploy step not configured | Uncomment one platform block in `deploy-production.yml` |
 | pre-commit fails on fork | No `PRE_COMMIT` secret (expected) | Fork uses `pre-commit-ci/lite-action` fallback — this is normal |
-| Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.10 and Bun latest — check your local versions match |
+| Tests pass locally but fail in CI | Python or Bun version mismatch | CI uses Python 3.12 and Bun latest — check your local versions match |
