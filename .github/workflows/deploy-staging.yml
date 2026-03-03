@@ -1,22 +1,43 @@
 name: Deploy to Staging
 
+permissions: {} # Restrictive default; each job declares its own
+
 on:
-  workflow_dispatch: # Manual trigger only — enable push trigger when deployment target is configured
+  workflow_dispatch: # Manual trigger — see activation instructions below
+
+  # To enable automatic staging deployment on merge to main,
+  # uncomment the push trigger below and configure your deploy target:
+  # push:
+  #   branches: [main]
 
 concurrency:
   group: deploy-staging
   cancel-in-progress: true
 
 jobs:
+  # Gate: run CI checks before deploying
+  ci:
+    name: CI Checks
+    uses: ./.github/workflows/ci-checks.yml
+    permissions:
+      contents: read
+
   deploy:
+    needs: [ci]
     runs-on: ubuntu-latest
+    environment: staging
     permissions:
       contents: read
       packages: write
+      id-token: write  # Required for Cosign keyless signing via GitHub OIDC
+      security-events: write  # Required for Trivy SARIF upload
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
@@ -25,8 +46,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      # --- Backend Image ---
+      - name: Build backend image (load for scanning)
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false
+          load: true
+          tags: ghcr.io/${{ github.repository }}/backend:scan
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha,scope=backend-staging
+          cache-to: type=gha,mode=max,scope=backend-staging
+
+      - name: Trivy scan backend image
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e7b4b01e007f0be0 # v0.31.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/backend:scan
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF (backend)
+        if: always()
+        uses: github/codeql-action/upload-sarif@3b054500189c7b3ca9be7cd4f035ca58c00776cd # v3
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+      - name: Push backend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: push-backend
         with:
           context: .
           file: backend/Dockerfile
@@ -37,6 +90,69 @@ jobs:
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             BUILD_TIME=${{ github.event.head_commit.timestamp }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha,scope=backend-staging
+          cache-to: type=gha,mode=max,scope=backend-staging
+
+      # --- Frontend Image ---
+      - name: Build frontend image (load for scanning)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          load: true
+          tags: ghcr.io/${{ github.repository }}/frontend:scan
+          cache-from: type=gha,scope=frontend-staging
+          cache-to: type=gha,mode=max,scope=frontend-staging
+
+      - name: Trivy scan frontend image
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e7b4b01e007f0be0 # v0.31.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/frontend:scan
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF (frontend)
+        if: always()
+        uses: github/codeql-action/upload-sarif@3b054500189c7b3ca9be7cd4f035ca58c00776cd # v3
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
+      - name: Push frontend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: push-frontend
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/frontend:staging
+          provenance: true
+          sbom: true
+          cache-from: type=gha,scope=frontend-staging
+          cache-to: type=gha,mode=max,scope=frontend-staging
+
+      # --- Cosign Signing ---
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+
+      - name: Sign backend image
+        env:
+          DIGEST: ${{ steps.push-backend.outputs.digest }}
+          REPO: ${{ github.repository }}
+        run: cosign sign --yes "ghcr.io/${REPO}/backend@${DIGEST}"
+
+      - name: Sign frontend image
+        env:
+          DIGEST: ${{ steps.push-frontend.outputs.digest }}
+          REPO: ${{ github.repository }}
+        run: cosign sign --yes "ghcr.io/${REPO}/frontend@${DIGEST}"
 
       # --- PLUGGABLE DEPLOY STEP ---
       # Uncomment ONE of the following blocks for your platform:

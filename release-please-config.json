@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    "backend": {
+      "release-type": "python",
+      "component": "backend",
+      "package-name": "backend",
+      "extra-files": [
+        "backend/app/core/config.py"
+      ]
+    },
+    "frontend": {
+      "release-type": "node",
+      "component": "frontend",
+      "package-name": "frontend"
+    }
+  },
+  "separate-pull-requests": false,
+  "group-pull-request-title-pattern": "chore: release ${version}",
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "chore", "section": "Miscellaneous" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "refactor", "section": "Code Refactoring" },
+    { "type": "test", "section": "Tests" },
+    { "type": "ci", "section": "CI/CD" },
+    { "type": "perf", "section": "Performance" }
+  ]
+}

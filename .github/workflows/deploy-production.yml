@@ -1,7 +1,9 @@
 name: Deploy to Production
 
+permissions: {} # Restrictive default; each job declares its own
+
 on:
-  workflow_dispatch: # Manual trigger only — restore release trigger when staging pipeline works
+  workflow_dispatch: # Manual trigger — restore release trigger when staging pipeline works
     inputs:
       tag:
         description: "Image tag to promote to production (e.g. v1.2.3)"
@@ -17,9 +19,11 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       packages: write
+      id-token: write  # Required for Cosign keyless signing via GitHub OIDC
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -31,15 +35,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify staging image exists in GHCR
+      - name: Verify staging backend image exists in GHCR
         env:
           IMAGE: ghcr.io/${{ github.repository }}/backend:${{ inputs.sha }}
           SHA: ${{ inputs.sha }}
         run: |
           docker manifest inspect "${IMAGE}" > /dev/null || \
-            (echo "ERROR: Staging image not found for SHA ${SHA}. Ensure the staging deploy completed before promoting." && exit 1)
+            (echo "ERROR: Staging backend image not found for SHA ${SHA}. Ensure the staging deploy completed before promoting." && exit 1)
 
-      - name: Promote staging image to production (re-tag, no rebuild)
+      - name: Verify staging frontend image exists in GHCR
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/frontend:${{ inputs.sha }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          docker manifest inspect "${IMAGE}" > /dev/null || \
+            (echo "ERROR: Staging frontend image not found for SHA ${SHA}. Ensure the staging deploy completed before promoting." && exit 1)
+
+      - name: Promote backend image to production (re-tag, no rebuild)
         env:
           REPO: ${{ github.repository }}
           SHA: ${{ inputs.sha }}
@@ -57,6 +69,45 @@ jobs:
           # Push version and latest tags
           docker push "ghcr.io/${REPO}/backend:${TAG_NAME}"
           docker push "ghcr.io/${REPO}/backend:latest"
+
+      - name: Promote frontend image to production (re-tag, no rebuild)
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ inputs.sha }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          # Pull the exact image built and validated in the staging pipeline
+          docker pull "ghcr.io/${REPO}/frontend:${SHA}"
+
+          # Re-tag as version and latest
+          docker tag "ghcr.io/${REPO}/frontend:${SHA}" \
+            "ghcr.io/${REPO}/frontend:${TAG_NAME}"
+          docker tag "ghcr.io/${REPO}/frontend:${SHA}" \
+            "ghcr.io/${REPO}/frontend:latest"
+
+          # Push version and latest tags
+          docker push "ghcr.io/${REPO}/frontend:${TAG_NAME}"
+          docker push "ghcr.io/${REPO}/frontend:latest"
+
+      # --- Cosign Signing ---
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+
+      - name: Sign backend production image
+        env:
+          REPO: ${{ github.repository }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${REPO}/backend:${TAG_NAME}" | cut -d@ -f2)
+          cosign sign --yes "ghcr.io/${REPO}/backend@${DIGEST}"
+
+      - name: Sign frontend production image
+        env:
+          REPO: ${{ github.repository }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${REPO}/frontend:${TAG_NAME}" | cut -d@ -f2)
+          cosign sign --yes "ghcr.io/${REPO}/frontend@${DIGEST}"
 
       # --- PLUGGABLE DEPLOY STEP ---
       # Uncomment ONE of the following blocks for your platform.

@@ -2,8 +2,8 @@
 title: "Test Registry"
 doc-type: reference
 status: active
-last-updated: 2026-03-01
-updated-by: "test registry audit"
+last-updated: 2026-03-03
+updated-by: "infra docs writer"
 related-code:
   - "backend/tests/**/*.py"
   - "frontend/tests/**/*.spec.ts"
@@ -35,7 +35,11 @@ tags: [testing, quality, registry]
 | backend/services/entity_service | 20 | 0 | 0 | 20 |
 | frontend/entities | 0 | 0 | 7 | 7 |
 | frontend/navigation | 0 | 0 | 5 | 5 |
-| **Total** | **159** | **42** | **12** | **213** |
+| frontend/utils | 13 | 0 | 0 | 13 |
+| frontend/components/theme-provider | 8 | 0 | 0 | 8 |
+| frontend/hooks/useAuth | 13 | 0 | 0 | 13 |
+| frontend/hooks/useCopyToClipboard | 7 | 0 | 0 | 7 |
+| **Total** | **200** | **42** | **12** | **254** |
 
 > Unit tests in `backend/tests/unit/` can run without database env vars. The conftest guard pattern in that directory skips DB-dependent fixtures automatically.
 
@@ -338,13 +342,37 @@ tags: [testing, quality, registry]
 | theme toggle works | Toggles between light and dark mode | e2e | passing |
 | user menu shows sign out option | Opens user menu, verifies Sign Out item | e2e | passing |
 
+### Frontend — Unit: Utilities (`frontend/src/__tests__/utils.test.ts`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| (13 tests covering `handleError` and `getInitials`) | Unit tests for `handleError` and `getInitials` utilities | unit | passing |
+
+### Frontend — Unit: ThemeProvider (`frontend/src/components/__tests__/theme-provider.test.tsx`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| (8 tests covering `ThemeProvider` and `useTheme`) | Unit tests for `ThemeProvider` component and `useTheme` hook | unit | passing |
+
+### Frontend — Unit: useAuth Hook (`frontend/src/hooks/__tests__/useAuth.test.ts`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| (13 tests covering `useAuth` exported functions) | Unit tests for `useAuth` hook exported functions | unit | passing |
+
+### Frontend — Unit: useCopyToClipboard Hook (`frontend/src/hooks/__tests__/useCopyToClipboard.test.ts`)
+
+| Test Name | Description | Type | Status |
+|-----------|-------------|------|--------|
+| (7 tests covering `useCopyToClipboard`) | Unit tests for `useCopyToClipboard` hook | unit | passing |
+
 ## Coverage Gaps
 
 | Module | Gap | Linked Issue |
 |--------|-----|-------------|
 | backend/app/lifespan | No test for startup log event fields (service_name, version, environment) | - |
 | backend/core/http_client | No integration tests against real HTTP server | - |
-| frontend | No unit or integration tests (Playwright E2E only). Auth is token-injection based. | - |
+| frontend | Unit tests added for utilities, ThemeProvider, useAuth, useCopyToClipboard. Additional component coverage pending. | - |
 
 > `backend/core/config` was previously listed as a gap — now covered by 13 unit tests in `backend/tests/unit/test_config.py`.
 > `backend/core/errors` is a new module introduced in AYG-65 — covered by 20 unit tests in `backend/tests/unit/test_errors.py`.
