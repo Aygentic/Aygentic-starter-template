@@ -266,7 +266,10 @@ def test_security_header_referrer_policy(client: TestClient):
 def test_security_header_permissions_policy(client: TestClient):
     """Permissions-Policy: camera=(), microphone=(), geolocation=()."""
     response = client.get("/ok")
-    assert response.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
+    assert (
+        response.headers["permissions-policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )
 
 
 def test_security_header_content_security_policy(client: TestClient):
@@ -277,7 +280,9 @@ def test_security_header_content_security_policy(client: TestClient):
     assert "default-src 'self'" in csp
     assert "script-src 'self'" in csp
     assert "style-src 'self' 'unsafe-inline'" in csp
-    assert "connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev" in csp
+    assert (
+        "connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev" in csp
+    )
     assert "object-src 'none'" in csp
     assert "base-uri 'self'" in csp
     assert "form-action 'self'" in csp
@@ -322,7 +327,13 @@ def test_cors_preflight_gets_security_headers(client_cors: TestClient):
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["x-xss-protection"] == "0"
     assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
-    assert response.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
+    assert (
+        response.headers["permissions-policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )
+    csp = response.headers.get("content-security-policy")
+    assert csp is not None
+    assert "default-src 'self'" in csp
 
 
 def test_cors_preflight_gets_request_id_header(client_cors: TestClient):
@@ -377,14 +388,19 @@ def test_request_id_header_on_unhandled_exception(client: TestClient):
 # ---------------------------------------------------------------------------
 
 
-def _capture_middleware_log(client: TestClient, path: str, **headers: str) -> list[dict]:
+def _capture_middleware_log(
+    client: TestClient, path: str, **headers: str
+) -> list[dict]:
     """Make a request and capture JSON log lines from structlog."""
     buf = io.StringIO()
     original_config = structlog.get_config()
     try:
         setup_logging(_make_settings(LOG_FORMAT="json"))
         structlog.configure(
-            **{**structlog.get_config(), "logger_factory": structlog.PrintLoggerFactory(file=buf)}
+            **{
+                **structlog.get_config(),
+                "logger_factory": structlog.PrintLoggerFactory(file=buf),
+            }
         )
         client.get(path, headers=headers)
     finally:
@@ -403,7 +419,9 @@ def _capture_middleware_log(client: TestClient, path: str, **headers: str) -> li
 def test_log_level_info_for_2xx(client: TestClient):
     """200 response is logged at info level."""
     logs = _capture_middleware_log(client, "/ok")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     assert request_logs[0]["level"] == "info"
 
@@ -411,7 +429,9 @@ def test_log_level_info_for_2xx(client: TestClient):
 def test_log_level_warning_for_4xx(client: TestClient):
     """404 response is logged at warning level."""
     logs = _capture_middleware_log(client, "/not-found")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     assert request_logs[0]["level"] == "warning"
 
@@ -419,7 +439,9 @@ def test_log_level_warning_for_4xx(client: TestClient):
 def test_log_level_error_for_5xx(client: TestClient):
     """500 response is logged at error level."""
     logs = _capture_middleware_log(client, "/server-error")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     assert request_logs[0]["level"] == "error"
 
@@ -432,7 +454,9 @@ def test_log_level_error_for_5xx(client: TestClient):
 def test_request_log_fields(client: TestClient):
     """Request log includes method, path, status_code, duration_ms."""
     logs = _capture_middleware_log(client, "/ok")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     entry = request_logs[0]
     assert entry["method"] == "GET"
@@ -446,7 +470,9 @@ def test_request_log_fields(client: TestClient):
 def test_user_id_logged_when_authenticated(client: TestClient):
     """user_id is included in log when request.state has user_id."""
     logs = _capture_middleware_log(client, "/authenticated")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     assert request_logs[0].get("user_id") == "user-42"
 
@@ -454,7 +480,9 @@ def test_user_id_logged_when_authenticated(client: TestClient):
 def test_user_id_absent_when_unauthenticated(client: TestClient):
     """user_id is not in log entry when no authentication."""
     logs = _capture_middleware_log(client, "/ok")
-    request_logs = [entry for entry in logs if entry.get("event") == "request_completed"]
+    request_logs = [
+        entry for entry in logs if entry.get("event") == "request_completed"
+    ]
     assert len(request_logs) == 1
     assert "user_id" not in request_logs[0]
 
@@ -481,9 +509,7 @@ def test_authorization_header_not_logged(client: TestClient):
 def test_cookie_header_not_logged(client: TestClient):
     """Request with Cookie header must NOT appear in log output."""
     secret_cookie = "session=abc123secret456"
-    logs = _capture_middleware_log(
-        client, "/ok", Cookie=secret_cookie
-    )
+    logs = _capture_middleware_log(client, "/ok", Cookie=secret_cookie)
     raw = json.dumps(logs)
     assert secret_cookie not in raw
     assert "abc123secret456" not in raw

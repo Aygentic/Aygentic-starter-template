@@ -30,4 +30,5 @@ RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --ingroup appgroup appuser && \
     chown -R appuser:appgroup /usr/share/nginx/html /var/cache/nginx /var/log/nginx && \
     touch /var/run/nginx.pid && chown appuser:appgroup /var/run/nginx.pid
+EXPOSE 8080
 USER appuser

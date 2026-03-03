@@ -36,7 +36,8 @@ _SECURITY_HEADERS: dict[str, str] = {
         "connect-src 'self' https://*.supabase.co https://*.clerk.accounts.dev; "
         "object-src 'none'; "
         "base-uri 'self'; "
-        "form-action 'self'"
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
     ),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
