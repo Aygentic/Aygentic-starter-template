@@ -198,6 +198,37 @@ supabase migration new <description-of-changes>
 supabase db push
 ```
 
+## Branch Protection
+
+Configure GitHub branch protection rules for the `main` branch to enforce CI quality gates:
+
+**Navigate to:** GitHub repository → Settings → Branches → Add branch protection rule
+
+### Recommended Settings
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| Branch name pattern | `main` | Protect the default branch |
+| Require a pull request before merging | Enabled | Prevent direct pushes |
+| Required approvals | 1 | At least one reviewer |
+| Require status checks to pass | Enabled | Block merge on CI failure |
+| Required status checks | `CI Complete`, `alls-green-playwright` | Gate on all CI + E2E |
+| Require branches to be up to date | Enabled | Ensure branch is current |
+| Do not allow bypassing | Enabled (recommended) | Even admins go through PR |
+
+### Required Status Checks
+
+These jobs must pass before a PR can merge:
+
+- **`CI Complete`** — Backend lint, backend tests (90% coverage), frontend lint + build, frontend unit tests (80% coverage), Docker build
+- **`alls-green-playwright`** — Playwright E2E tests across 4 shards (skipped if no frontend/backend changes)
+
+### Additional Recommendations
+
+- **Disable force push** to `main` — prevents history rewriting
+- **Disable branch deletion** for `main` — prevents accidental deletion
+- **Require linear history** (optional) — enforces squash or rebase merges
+
 ## Troubleshooting
 
 | Issue | Solution |

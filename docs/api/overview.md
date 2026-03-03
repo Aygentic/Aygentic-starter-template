@@ -233,8 +233,49 @@ CORS allowed origins are controlled by two configuration values:
 
 ## Rate Limiting
 
-<!-- TODO: Populate when rate limiting is implemented -->
-[placeholder]
+Rate limiting is not enabled by default in this template. When you're ready to add it, we recommend [slowapi](https://github.com/laurentS/slowapi) — a lightweight rate limiter for FastAPI built on top of `limits`.
+
+### Adding Rate Limiting
+
+1. Install the dependency:
+```bash
+cd backend
+uv add slowapi
+```
+
+2. Configure the limiter in `app/core/middleware.py`:
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+```
+
+3. Apply to the FastAPI app in `app/main.py`:
+```python
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+```
+
+4. Decorate individual routes:
+```python
+from app.core.middleware import limiter
+
+@router.get("/entities")
+@limiter.limit("60/minute")
+async def list_entities(request: Request, ...):
+    ...
+```
+
+### Considerations
+
+- **Key function**: `get_remote_address` uses the client IP. Behind a reverse proxy (Traefik), configure `X-Forwarded-For` trust.
+- **Storage backend**: Defaults to in-memory. For multi-worker deployments, use Redis: `Limiter(key_func=..., storage_uri="redis://localhost:6379")`
+- **Response headers**: slowapi automatically adds `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers.
+- **Error response**: Rate-limited requests return HTTP 429 with the standard error shape (`"error": "RATE_LIMITED"`).
 
 ## Related
 
