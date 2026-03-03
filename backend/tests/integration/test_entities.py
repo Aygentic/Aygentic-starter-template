@@ -9,7 +9,7 @@ Run:
 
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
@@ -35,7 +35,7 @@ _PREFIX = "/api/v1"
 _TEST_USER_ID = "user_test123"
 _OTHER_USER_ID = "user_other456"
 _ENTITY_ID = str(uuid.uuid4())
-_NOW = datetime.now(tz=timezone.utc).isoformat()
+_NOW = datetime.now(tz=UTC).isoformat()
 
 _ENTITY_ROW = {
     "id": _ENTITY_ID,

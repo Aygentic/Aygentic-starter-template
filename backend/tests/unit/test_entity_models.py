@@ -4,7 +4,7 @@ Tests are written FIRST (TDD) before implementation in:
   - backend/app/models/entity.py
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -81,7 +81,7 @@ def test_entity_update_empty_title_rejected():
 
 def test_entity_public_includes_all_fields():
     """AC-2: EntityPublic includes id, title, description, owner_id, created_at, updated_at."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     entity_id = uuid4()
     entity = EntityPublic(
         id=entity_id,
@@ -101,7 +101,7 @@ def test_entity_public_includes_all_fields():
 
 def test_entity_public_serialization():
     """EntityPublic round-trips through model_dump() preserving all values."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     entity_id = uuid4()
     entity = EntityPublic(
         id=entity_id,
@@ -127,7 +127,7 @@ def test_entity_public_serialization():
 
 def test_entities_public_wraps_list():
     """EntitiesPublic(data=[...], count=N) serializes data list and count correctly."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     items = [
         EntityPublic(
             id=uuid4(),
