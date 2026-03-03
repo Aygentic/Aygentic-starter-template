@@ -2,10 +2,10 @@
 title: "API Overview"
 doc-type: reference
 status: active
-version: "1.8.0"
+version: "1.9.0"
 base-url: "/api/v1"
 last-updated: 2026-03-03
-updated-by: "api-docs-writer (AYG-89)"
+updated-by: "initialise skill"
 related-code:
   - backend/app/main.py
   - backend/app/api/main.py
@@ -13,13 +13,16 @@ related-code:
   - backend/app/api/routes/entities.py
   - backend/app/api/routes/health.py
   - backend/app/models/entity.py
+  - backend/app/models/common.py
   - backend/app/services/entity_service.py
+  - backend/app/core/auth.py
   - backend/app/core/config.py
   - backend/app/core/errors.py
   - backend/app/core/middleware.py
 related-docs:
-  - docs/architecture/overview.md
+  - docs/architecture/backend-overview.md
   - docs/data/models.md
+  - docs/api/error-codes.md
 tags: [api, rest, overview]
 ---
 
@@ -48,7 +51,7 @@ The API uses Clerk-issued JWT bearer tokens. Clients obtain a token directly fro
 1. Client authenticates with Clerk (hosted UI, SDK sign-in, or OAuth provider).
 2. Clerk issues a short-lived JWT signed with Clerk's RSA key.
 3. Client sends the JWT as a `Bearer` token in the `Authorization` header.
-4. FastAPI dependency verifies the token via the Clerk SDK and extracts a `Principal` (containing `user_id`, `roles`, and `org_id`).
+4. FastAPI dependency (`get_current_principal` in `backend/app/core/auth.py`) verifies the token via the Clerk SDK and extracts a `Principal` (containing `user_id`, `session_id`, `roles`, and `org_id`). All auth failures raise `ServiceError(401)` — there are no 403 responses from the auth layer.
 5. The resolved `Principal` is forwarded to route handlers for authorization decisions.
 
 ### Using a Token
@@ -65,9 +68,10 @@ After verification the Clerk SDK exposes the following fields to route handlers:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `user_id` | string | Clerk user identifier (e.g. `user_2abc...`) |
-| `roles` | array[string] | Roles assigned in the Clerk organization session |
-| `org_id` | string \| null | Active organization identifier, if the session is org-scoped |
+| `user_id` | string | Clerk user identifier — the `sub` claim from the JWT (e.g. `user_2abc...`) |
+| `session_id` | string | Clerk session identifier — the `sid` claim from the JWT |
+| `roles` | array[string] | Roles extracted from the `o.rol` claim in the JWT (active org role); empty if no active organization |
+| `org_id` | string \| null | Active organization identifier from the `o.id` or `org_id` claim; `null` if no org session |
 
 ### Token Lifetime
 
@@ -366,6 +370,7 @@ async def list_entities(request: Request, ...):
 
 | Version | Date | Change |
 |---------|------|--------|
+| 1.9.0 | 2026-03-03 | initialise skill: Added `session_id` to Principal Claims table; clarified auth always returns 401 (never 403); added `models/common.py`, `core/auth.py`, and `error-codes.md` to related-code/related-docs |
 | 1.8.0 | 2026-03-03 | AYG-89: Expanded CORS section with explicit allowed-methods and allowed-headers lists; added Security Headers section documenting all 6 headers emitted by RequestPipelineMiddleware including full CSP directive breakdown |
 | 1.7.0 | 2026-03-01 | Docs cleanup: Removed deprecated endpoint doc files (items, login, users, utils) and stale references to legacy security module |
 | 1.6.0 | 2026-03-01 | AYG-76: Removed stale `skip` migration note (all endpoints use `offset`); removed `Message` data model section (DELETE /entities returns 204 No Content, no body); updated curl example from removed `/users/me` to `/entities/`; marked utils.md as removed |

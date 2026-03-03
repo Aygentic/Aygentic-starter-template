@@ -5,7 +5,7 @@ status: active
 database: "Supabase (PostgreSQL)"
 schema: "public"
 last-updated: 2026-03-03
-updated-by: "data-model-docs-writer"
+updated-by: "initialise skill"
 related-code:
   - backend/app/models/
   - backend/app/models/auth.py
@@ -16,7 +16,7 @@ related-code:
   - supabase/migrations/
 related-docs:
   - docs/api/overview.md
-  - docs/architecture/overview.md
+  - docs/architecture/backend-overview.md
 tags: [data, database, models]
 ---
 

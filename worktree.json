@@ -1,10 +1,11 @@
 {
+  "$schema": "Worktree setup configuration for AI agent dev environment creation",
   "setup": {
     "deps": [
       { "cmd": "cd backend && uv sync --quiet", "label": "Backend deps (uv)" },
       { "cmd": "bun install --frozen-lockfile", "label": "Frontend deps (bun)" }
     ],
     "envFallback": ".env.example",
-    "copyFromMain": ["CLAUDE.md", ".env"]
+    "copyFromMain": ["CLAUDE.md", ".env", ".claude"]
   }
 }

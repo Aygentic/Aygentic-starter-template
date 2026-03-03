@@ -12,7 +12,7 @@ related-code:
   - backend/app/core/config.py
 related-docs:
   - docs/api/overview.md
-  - docs/architecture/overview.md
+  - docs/architecture/backend-overview.md
 tags: [api, rest, health, operations, liveness, readiness, version]
 ---
 

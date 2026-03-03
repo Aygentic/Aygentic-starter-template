@@ -2,18 +2,21 @@
 title: "Entities API"
 doc-type: reference
 status: active
-version: "0.1.0"
+version: "1.0.0"
 base-url: "/api/v1"
-last-updated: 2026-02-28
-updated-by: "api-docs-writer (AYG-70)"
+last-updated: 2026-03-03
+updated-by: "initialise skill"
 related-code:
+  - backend/app/api/routes/entities.py
   - backend/app/models/entity.py
   - backend/app/services/entity_service.py
   - backend/app/api/deps.py
+  - backend/app/core/auth.py
   - backend/app/core/errors.py
 related-docs:
   - docs/api/overview.md
-  - docs/architecture/overview.md
+  - docs/api/error-codes.md
+  - docs/architecture/backend-overview.md
   - docs/data/models.md
 tags: [api, rest, entities]
 ---
@@ -105,12 +108,13 @@ curl -X POST "http://localhost:8000/api/v1/entities" \
 
 **Error Responses:**
 
-All errors use the [standard error shape](../overview.md#standard-error-responses).
+All errors use the [standard error shape](../overview.md#standard-error-responses). All authentication failures return `401` — there are no `403` responses from the auth layer.
 
 | Status | `error` | `code` | When |
 |--------|---------|--------|------|
-| `401 Unauthorized` | `UNAUTHORIZED` | `UNAUTHORIZED` | No `Authorization` header supplied |
-| `403 Forbidden` | `FORBIDDEN` | `FORBIDDEN` | Clerk token is invalid, expired, or cannot be verified |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_MISSING_TOKEN` | No `Authorization` header supplied |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_EXPIRED_TOKEN` | JWT token has expired |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_INVALID_TOKEN` | Invalid signature, wrong authorized party, or other JWT failure |
 | `422 Unprocessable Entity` | `VALIDATION_ERROR` | `VALIDATION_FAILED` | `title` is missing, empty, or exceeds 255 chars; `description` exceeds 1000 chars (includes `details` array) |
 | `500 Internal Server Error` | `INTERNAL_ERROR` | `ENTITY_CREATE_FAILED` | Supabase insert failed or returned no data |
 
@@ -162,12 +166,13 @@ curl -X GET "http://localhost:8000/api/v1/entities/c3d4e5f6-a7b8-9012-cdef-34567
 
 **Error Responses:**
 
-All errors use the [standard error shape](../overview.md#standard-error-responses).
+All errors use the [standard error shape](../overview.md#standard-error-responses). All authentication failures return `401` — there are no `403` responses from the auth layer.
 
 | Status | `error` | `code` | When |
 |--------|---------|--------|------|
-| `401 Unauthorized` | `UNAUTHORIZED` | `UNAUTHORIZED` | No `Authorization` header supplied |
-| `403 Forbidden` | `FORBIDDEN` | `FORBIDDEN` | Clerk token is invalid, expired, or cannot be verified |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_MISSING_TOKEN` | No `Authorization` header supplied |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_EXPIRED_TOKEN` | JWT token has expired |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_INVALID_TOKEN` | Invalid signature, wrong authorized party, or other JWT failure |
 | `404 Not Found` | `NOT_FOUND` | `ENTITY_NOT_FOUND` | No entity with the given `entity_id` exists, or it is owned by a different user |
 | `500 Internal Server Error` | `INTERNAL_ERROR` | `ENTITY_GET_FAILED` | Supabase query failed due to a network or database error |
 
@@ -221,12 +226,13 @@ curl -X GET "http://localhost:8000/api/v1/entities?offset=0&limit=20" \
 
 **Error Responses:**
 
-All errors use the [standard error shape](../overview.md#standard-error-responses).
+All errors use the [standard error shape](../overview.md#standard-error-responses). All authentication failures return `401` — there are no `403` responses from the auth layer.
 
 | Status | `error` | `code` | When |
 |--------|---------|--------|------|
-| `401 Unauthorized` | `UNAUTHORIZED` | `UNAUTHORIZED` | No `Authorization` header supplied |
-| `403 Forbidden` | `FORBIDDEN` | `FORBIDDEN` | Clerk token is invalid, expired, or cannot be verified |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_MISSING_TOKEN` | No `Authorization` header supplied |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_EXPIRED_TOKEN` | JWT token has expired |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_INVALID_TOKEN` | Invalid signature, wrong authorized party, or other JWT failure |
 | `422 Unprocessable Entity` | `VALIDATION_ERROR` | `VALIDATION_FAILED` | `offset` or `limit` are not valid integers (includes `details` array) |
 | `500 Internal Server Error` | `INTERNAL_ERROR` | `ENTITY_LIST_FAILED` | Supabase query failed due to a network or database error |
 
@@ -300,12 +306,13 @@ curl -X PATCH "http://localhost:8000/api/v1/entities/c3d4e5f6-a7b8-9012-cdef-345
 
 **Error Responses:**
 
-All errors use the [standard error shape](../overview.md#standard-error-responses).
+All errors use the [standard error shape](../overview.md#standard-error-responses). All authentication failures return `401` — there are no `403` responses from the auth layer.
 
 | Status | `error` | `code` | When |
 |--------|---------|--------|------|
-| `401 Unauthorized` | `UNAUTHORIZED` | `UNAUTHORIZED` | No `Authorization` header supplied |
-| `403 Forbidden` | `FORBIDDEN` | `FORBIDDEN` | Clerk token is invalid, expired, or cannot be verified |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_MISSING_TOKEN` | No `Authorization` header supplied |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_EXPIRED_TOKEN` | JWT token has expired |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_INVALID_TOKEN` | Invalid signature, wrong authorized party, or other JWT failure |
 | `404 Not Found` | `NOT_FOUND` | `ENTITY_NOT_FOUND` | No entity with the given `entity_id` exists, or it is owned by a different user |
 | `422 Unprocessable Entity` | `VALIDATION_ERROR` | `VALIDATION_FAILED` | `title` is an empty string or fields exceed max length (includes `details` array) |
 | `500 Internal Server Error` | `INTERNAL_ERROR` | `ENTITY_UPDATE_FAILED` | Supabase update query failed |
@@ -344,12 +351,13 @@ HTTP/1.1 204 No Content
 
 **Error Responses:**
 
-All errors use the [standard error shape](../overview.md#standard-error-responses).
+All errors use the [standard error shape](../overview.md#standard-error-responses). All authentication failures return `401` — there are no `403` responses from the auth layer.
 
 | Status | `error` | `code` | When |
 |--------|---------|--------|------|
-| `401 Unauthorized` | `UNAUTHORIZED` | `UNAUTHORIZED` | No `Authorization` header supplied |
-| `403 Forbidden` | `FORBIDDEN` | `FORBIDDEN` | Clerk token is invalid, expired, or cannot be verified |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_MISSING_TOKEN` | No `Authorization` header supplied |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_EXPIRED_TOKEN` | JWT token has expired |
+| `401 Unauthorized` | `UNAUTHORIZED` | `AUTH_INVALID_TOKEN` | Invalid signature, wrong authorized party, or other JWT failure |
 | `404 Not Found` | `NOT_FOUND` | `ENTITY_NOT_FOUND` | No entity with the given `entity_id` exists, or it is owned by a different user |
 | `500 Internal Server Error` | `INTERNAL_ERROR` | `ENTITY_DELETE_FAILED` | Supabase delete query failed |
 
@@ -357,7 +365,17 @@ All errors use the [standard error shape](../overview.md#standard-error-response
 
 ## Error Code Reference
 
-All entity-specific error codes beyond the standard auth codes:
+### Auth Error Codes (all return HTTP 401)
+
+These are raised by `backend/app/core/auth.py` before the route handler is reached.
+
+| `code` | HTTP Status | Description |
+|--------|-------------|-------------|
+| `AUTH_MISSING_TOKEN` | `401` | No `Authorization` header or Bearer token in request |
+| `AUTH_EXPIRED_TOKEN` | `401` | JWT token has expired (Clerk session TTL exceeded) |
+| `AUTH_INVALID_TOKEN` | `401` | Invalid signature, wrong authorized party, missing `sub`/`sid` claims, or SDK-level failure |
+
+### Entity Error Codes
 
 | `code` | HTTP Status | Description |
 |--------|-------------|-------------|
@@ -367,6 +385,14 @@ All entity-specific error codes beyond the standard auth codes:
 | `ENTITY_LIST_FAILED` | `500` | Supabase list query failed |
 | `ENTITY_UPDATE_FAILED` | `500` | Supabase update query failed |
 | `ENTITY_DELETE_FAILED` | `500` | Supabase delete query failed |
+
+### Validation Error Code
+
+| `code` | HTTP Status | Description |
+|--------|-------------|-------------|
+| `VALIDATION_FAILED` | `422` | Request body or query parameters failed Pydantic validation; includes `details` array |
+
+For the full project-wide error code catalog see [Error Codes](../error-codes.md).
 
 ---
 
@@ -418,4 +444,5 @@ Returned by `GET /entities`.
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-02-28 | AYG-69: Pre-scaffolded from service layer contract; routes planned for AYG-70 |
+| 1.0.0 | 2026-03-03 | initialise skill: Corrected auth error codes — all auth failures return `401` with `AUTH_MISSING_TOKEN`, `AUTH_EXPIRED_TOKEN`, or `AUTH_INVALID_TOKEN` (never `403`); added auth + validation sections to Error Code Reference; added `routes/entities.py` and `core/auth.py` to related-code |
+| 0.1.0 | 2026-02-28 | AYG-69/AYG-70: Initial scaffold from service layer contract; all five CRUD endpoints documented |

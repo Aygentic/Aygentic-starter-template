@@ -3,12 +3,23 @@ title: "How to Add a New Resource"
 doc-type: guide
 status: active
 last-updated: 2026-03-03
+updated-by: "initialise skill"
 related-code:
   - backend/app/models/entity.py
   - backend/app/services/entity_service.py
   - backend/app/api/routes/entities.py
+  - backend/tests/unit/test_entity_service.py
+  - backend/tests/integration/test_entities.py
   - frontend/src/components/Entities/
   - frontend/src/routes/_layout/entities.tsx
+  - supabase/migrations/20260227000000_create_entities.sql
+  - scripts/generate-client.sh
+related-docs:
+  - docs/getting-started/development.md
+  - docs/api/overview.md
+  - docs/data/models.md
+  - docs/testing/strategy.md
+  - docs/api/error-codes.md
 tags: [guide, getting-started, crud]
 ---
 

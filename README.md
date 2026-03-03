@@ -474,7 +474,8 @@ See `.env.example` for the full variable reference including CI/CD platform secr
 | [docs/getting-started/setup.md](docs/getting-started/setup.md) | Prerequisites, installation, local services |
 | [docs/getting-started/development.md](docs/getting-started/development.md) | Daily commands, database migrations, API client |
 | [docs/getting-started/contributing.md](docs/getting-started/contributing.md) | Code standards, PR process, commit format |
-| [docs/architecture/overview.md](docs/architecture/overview.md) | System design, component interactions |
+| [docs/architecture/backend-overview.md](docs/architecture/backend-overview.md) | Backend system design, middleware, services |
+| [docs/architecture/frontend-overview.md](docs/architecture/frontend-overview.md) | Frontend architecture, state, routing |
 | [docs/api/overview.md](docs/api/overview.md) | API conventions, authentication, error handling |
 | [docs/data/models.md](docs/data/models.md) | Data models and database schema |
 | [docs/testing/strategy.md](docs/testing/strategy.md) | Testing approach and coverage requirements |

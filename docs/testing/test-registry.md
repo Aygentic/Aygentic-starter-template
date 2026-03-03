@@ -3,7 +3,7 @@ title: "Test Registry"
 doc-type: reference
 status: active
 last-updated: 2026-03-03
-updated-by: "architecture-docs-writer (production hardening AYG-89)"
+updated-by: "initialise skill"
 related-code:
   - "backend/tests/**/*.py"
   - "frontend/tests/**/*.spec.ts"

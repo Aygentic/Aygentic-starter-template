@@ -3,7 +3,7 @@ title: "Setup Guide"
 doc-type: how-to
 status: published
 last-updated: 2026-03-03
-updated-by: "infra docs writer"
+updated-by: "initialise skill"
 related-code:
   - backend/app/core/config.py
   - compose.yml

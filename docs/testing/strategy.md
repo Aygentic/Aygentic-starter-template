@@ -3,7 +3,7 @@ title: "Testing Strategy"
 doc-type: reference
 status: active
 last-updated: 2026-03-03
-updated-by: "infra docs writer"
+updated-by: "initialise skill"
 related-code:
   - "backend/tests/**/*"
   - "frontend/tests/**/*.spec.ts"
@@ -13,7 +13,8 @@ related-code:
   - "frontend/vitest.config.ts"
 related-docs:
   - docs/testing/test-registry.md
-  - docs/architecture/overview.md
+  - docs/architecture/backend-overview.md
+  - docs/architecture/frontend-overview.md
 tags: [testing, strategy, quality]
 ---
 

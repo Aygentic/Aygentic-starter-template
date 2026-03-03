@@ -96,7 +96,8 @@ All PRs require at least one review before merging. The `CI Complete` status che
 
 ## Need Help?
 
-- [Architecture Overview](docs/architecture/overview.md)
+- [Backend Architecture](docs/architecture/backend-overview.md)
+- [Frontend Architecture](docs/architecture/frontend-overview.md)
 - [API Documentation](docs/api/overview.md)
 - [Testing Strategy](docs/testing/strategy.md)
 - [Deployment Guide](docs/deployment/environments.md)

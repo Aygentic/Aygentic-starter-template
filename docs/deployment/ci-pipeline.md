@@ -3,7 +3,7 @@ title: "CI/CD Pipeline"
 doc-type: reference
 status: published
 last-updated: 2026-03-03
-updated-by: "infra docs writer (AYG-89)"
+updated-by: "initialise skill"
 related-code:
   - .github/workflows/ci.yml
   - .github/workflows/playwright.yml
