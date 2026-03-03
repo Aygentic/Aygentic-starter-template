@@ -11,7 +11,6 @@ related-code:
   - .github/workflows/deploy-staging.yml
   - .github/workflows/deploy-production.yml
   - .github/workflows/ci-checks.yml
-  - .github/workflows/codeql.yml
   - .github/workflows/release.yml
   - scripts/test.sh
   - scripts/generate-client.sh
@@ -26,7 +25,7 @@ tags: [ci-cd, pipeline, deployment, automation, github-actions]
 
 ## Pipeline Overview
 
-This project uses GitHub Actions for all CI/CD automation. Eight workflows cover testing, code quality, security scanning, releases, and deployment.
+This project uses GitHub Actions for all CI/CD automation. Seven workflows cover testing, code quality, security scanning, releases, and deployment.
 
 ```
 Push / PR
@@ -54,7 +53,6 @@ On workflow_dispatch (manual):
 | Deploy to Staging | `deploy-staging.yml` | workflow_dispatch (manual) | Build+push to GHCR, pluggable deploy to staging | ubuntu-latest |
 | Deploy to Production | `deploy-production.yml` | workflow_dispatch (manual) | Promote GHCR image (no rebuild), pluggable deploy to production | ubuntu-latest |
 | CI Checks (reusable) | `ci-checks.yml` | `workflow_call` | Shared lint, test, build, audit, Docker build | ubuntu-latest |
-| CodeQL | `codeql.yml` | push main, PR (opened/sync) | SAST for Python + JavaScript/TypeScript | ubuntu-latest |
 | Release | `release.yml` | push main | Automated versioning via release-please | ubuntu-latest |
 
 ---
@@ -519,18 +517,6 @@ Environment-scoped secrets override repository-level secrets, allowing different
 
 ## Security Scanning
 
-### CodeQL SAST
-
-**File:** `.github/workflows/codeql.yml`
-
-| Property | Value |
-|----------|-------|
-| Trigger | Push to main, PRs |
-| Languages | Python, JavaScript/TypeScript |
-| Results | GitHub Security tab → Code scanning alerts |
-
-CodeQL performs static analysis to detect security vulnerabilities (SQL injection, XSS, path traversal, etc.) and code quality issues.
-
 ### Dependency Auditing
 
 Dependency auditing runs as part of the CI workflow:
@@ -560,7 +546,7 @@ Container images are scanned before push in deploy workflows:
 |----------|-------|
 | Scanner | Trivy |
 | Fail threshold | CRITICAL, HIGH |
-| Results | GitHub Security tab (SARIF upload) |
+| Results | Workflow logs (table output) |
 
 ### Supply Chain Attestation
 
