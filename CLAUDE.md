@@ -8,7 +8,7 @@ Microservice starter template: FastAPI backend + React frontend. Clerk JWT auth 
 
 | Category | Technology |
 |----------|-----------|
-| Backend | Python >=3.10, FastAPI >=0.114.2 |
+| Backend | Python >=3.12, FastAPI >=0.114.2 |
 | Auth | Clerk JWT (received from external dashboard, no login flow) |
 | Database | Supabase REST |
 | Migrations | Supabase CLI (`supabase/migrations/`) |

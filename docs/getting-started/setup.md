@@ -25,7 +25,7 @@ tags: [setup, onboarding, getting-started]
 
 - Git
 - Docker and Docker Compose (latest version)
-- Python >=3.10 (for local backend development without Docker)
+- Python >=3.12 (for local backend development without Docker)
 - Bun >=1.0 (for local frontend development without Docker)
 
 ## Installation

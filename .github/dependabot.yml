@@ -1,6 +1,19 @@
+# Dependabot Configuration
+#
+# Template default: GitHub Actions updated daily (auto-PRs), Python and Docker
+# monitored but no auto-PRs (sensitive upgrades).
+#
+# For production projects forked from this template:
+# - Disable Dependabot entirely: delete this file or run
+#   gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts -f state=disabled
+# - Or customize per-ecosystem: set open-pull-requests-limit to 0 (monitor only)
+#   or remove ecosystems you don't want tracked.
+# - Security alerts (CVEs) are separate from version updates and configured in
+#   repo Settings > Code security > Dependabot alerts.
+
 version: 2
 updates:
-  # GitHub Actions
+  # GitHub Actions — auto-PRs enabled (keeps SHA pins current)
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -8,11 +21,12 @@ updates:
     commit-message:
       prefix: ⬆
     labels: [dependencies, internal]
-  # Python uv
+  # Python uv — alerts only, no automatic PRs (Python upgrades are sensitive)
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     commit-message:
       prefix: ⬆
     labels: [dependencies, internal]
@@ -26,13 +40,14 @@ updates:
     labels: [dependencies, internal]
     ignore:
       - dependency-name: "@hey-api/openapi-ts"
-  # Docker
+  # Docker — alerts only, no automatic PRs (base image upgrades need manual testing)
   - package-ecosystem: docker
     directories:
       - /backend
       - /frontend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     commit-message:
       prefix: ⬆
     labels: [dependencies, internal]

@@ -542,7 +542,7 @@ CORS configured from `BACKEND_CORS_ORIGINS` env var. No wildcard in production.
 
 **Dockerfile (backend)**:
 - Multi-stage build: builder stage (install deps with `uv`) + runtime stage (copy installed packages)
-- Base: `python:3.10-slim`
+- Base: `python:3.12-slim`
 - Non-root user (`appuser`)
 - Health check: Python-based (no `curl` in final image) — `CMD ["python", "-c", "import httpx; httpx.get('http://localhost:8000/healthz').raise_for_status()"]`
 - Build args: `GIT_COMMIT`, `BUILD_TIME`

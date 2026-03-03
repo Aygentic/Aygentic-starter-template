@@ -4,7 +4,7 @@ doc-type: reference
 status: active
 database: "Supabase (PostgreSQL)"
 schema: "public"
-last-updated: 2026-03-01
+last-updated: 2026-03-03
 updated-by: "data-model-docs-writer"
 related-code:
   - backend/app/models/
@@ -301,7 +301,7 @@ Inherits all four fields from `ErrorResponse` (`error`, `message`, `code`, `requ
 Generic paginated list envelope for all list endpoints. The type parameter `T` is the item schema. `count` reflects the total across all pages, not just the current page.
 
 ```python
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     data: list[T]
     count: int
 ```

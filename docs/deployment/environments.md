@@ -38,7 +38,7 @@ This project uses three deployment environments with progressively stricter conf
 
 All environments use:
 - **Frontend**: React 19 + TypeScript, served by Nginx, managed by Traefik
-- **Backend**: FastAPI + Python 3.10, run by uvicorn, managed by Traefik
+- **Backend**: FastAPI + Python 3.12, run by uvicorn, managed by Traefik
 - **Database**: Supabase managed PostgreSQL (all environments)
 - **Authentication**: Clerk for user authentication and JWT verification
 - **Proxy**: Traefik 3.6 for routing and HTTPS/TLS certificates via Let's Encrypt
@@ -107,7 +107,7 @@ Teams deploying to managed platforms (Railway, Cloud Run, Fly.io) should use the
 
 | Service | Type | Notes |
 |---------|------|-------|
-| FastAPI | Backend | Python 3.10 with uvicorn |
+| FastAPI | Backend | Python 3.12 with uvicorn |
 | React | Frontend | Vite dev server |
 | Traefik | Reverse Proxy | Routes traffic by domain |
 | Clerk | Authentication | External managed service |
