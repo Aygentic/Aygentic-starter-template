@@ -1,8 +1,11 @@
 name: Deploy to Production
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch: # Manual trigger only — restore release trigger when staging pipeline works
+    inputs:
+      tag:
+        description: "Image tag to promote to production (e.g. v1.2.3)"
+        required: true
 
 concurrency:
   group: deploy-production
@@ -36,7 +39,7 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          TAG_NAME: ${{ github.event.inputs.tag || github.event.release.tag_name }}
         run: |
           # Pull the exact image built and validated in the staging pipeline
           docker pull "ghcr.io/${REPO}/backend:${SHA}"
