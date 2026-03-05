@@ -9,3 +9,4 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 supabase/.temp/
+.claude/plans/
