@@ -10,3 +10,4 @@ node_modules/
 /playwright/.cache/
 supabase/.temp/
 .claude/plans/
+.playwright-mcp/
